@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Couleurs personnalisées */
+:root {
+  --color-white: #ffffff;
+  --color-orange: #FC8404;
+  --color-dark: #080d24;
+}
+
+body {
+  background-color: var(--color-white);
+  color: var(--color-dark);
+}
