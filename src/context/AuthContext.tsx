@@ -5,6 +5,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: string;
+  token: string;
 }
 
 interface AuthContextType {
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         firstName: "SNR",
         lastName: "Rakotoarivony",
         role: "Administrateur",
+        token: "dfkdflhsdfkljhsdjksdjksdjks"
       };
 
       setUser(connectedUser);

@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import Parametrage from "./pages/conssigne/Parametrage";
+import Parametrage from "./pages/Parametrage/Parametrage";
 import Normalisation from "./pages/normalisation/Normalisation";
 import ScrollToTop from "./components/ScrollToTop";
 import PageTitle from "./components/PageTitle";
@@ -13,7 +13,7 @@ function App() {
   const { user } = useAuth();
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#ffffff] dark:bg-[#080d24]">
+    <div className="flex flex-col min-h-screen min-w-[360px] bg-[#ffffff] dark:bg-[#080d24]">
       <Router>
         <PageTitle />
         <ScrollToTop />

@@ -22,7 +22,11 @@ export default function Login() {
 
     if (success) {
       toast.success("Connexion réussie");
-      navigate("/normalisation");
+      const redirectPath = sessionStorage.getItem("redirectAfterLogin") || "/normalisation";
+
+      sessionStorage.removeItem("redirectAfterLogin");
+
+      navigate(redirectPath);
     } else {
       toast.error("Email ou mot de passe incorrect");
     }
