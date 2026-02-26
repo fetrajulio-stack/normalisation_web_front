@@ -3,8 +3,6 @@ import PageHeader from "../../components/PageHeader";
 import useThemeContext from "../../context/ThemeContext";
 import { CheckCircle, Download } from "lucide-react";
 import api from "../../services/api";
-import Select from "react-select";
-import { champDatas } from "../../data/data_champ";
 
 export interface Cathegory {
   id_code_dossier: number;
@@ -30,6 +28,25 @@ interface Consigne {
   statut: string;
 }
 
+interface Groupe {
+  ordre: number;
+  champs: string[];
+}
+
+interface ConsigneGroupes {
+  consigne_id: number;
+  groupes: Groupe[];
+  parametres: {
+    valeur_defaut: string;
+  };
+}
+
+interface PayloadConsignes {
+  nom_dossier: string;
+  nom_code_dossier: string;
+  consignes: ConsigneGroupes[];
+}
+
 const Parametrage = () => {
   const { theme } = useThemeContext();
 
@@ -43,6 +60,11 @@ const Parametrage = () => {
   const [consignes, setConsignes] = useState<Consigne[]>([]);
   const [selectedConsignes, setSelectedConsignes] = useState<Consigne[]>({});
   const [exportFormat, setExportFormat] = useState<"excel" | "txt">("excel");
+
+  // État pour les consignes avec groupes
+  const [consignesGroupes, setConsignesGroupes] = useState<ConsigneGroupes[]>([]);
+  const [selectedConsigneId, setSelectedConsigneId] = useState<number | "">("");
+  const [selectedGroupChamps, setSelectedGroupChamps] = useState<string[]>([]);
 
   /* Charger dossiers */
   useEffect(() => {
@@ -69,24 +91,32 @@ const Parametrage = () => {
   }, [selectedDossier]);
 
   /* Charger champs dynamiques */
-  useEffect(() => {
-    async function fetchChamps() {
-      if (!selectedDossier || !selectedCodeDossier) return;
-      try {
-        /* const res = await api.get(`/list-champs`, {
-          params: {
-            dossier: selectedDossier,
-            code_dossier: selectedCodeDossier,
-          },
-        });
-        setChamps(res.data); */
-        setChamps(champDatas);
-      } catch (err) {
-        console.error(err);
-      }
+  const handleValidateDossier = async () => {
+    if (!selectedDossier || !selectedCodeDossier) {
+      alert("Veuillez sélectionner un dossier et un code dossier");
+      return;
     }
-    fetchChamps();
-  }, [selectedDossier, selectedCodeDossier]);
+
+    try {
+      const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
+      const codeDossierInfo = codeDossiers.find(
+        (c) => c.id_code_dossier === selectedCodeDossier
+      );
+
+      if (!dossierInfo || !codeDossierInfo) return;
+
+      const res = await api.get(`/list-champs`, {
+        params: {
+          nom_dossier: dossierInfo.nom_dossier,
+          nom_code_dossier: codeDossierInfo.code_dossier,
+        },
+      });
+      setChamps(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors du chargement des champs");
+    }
+  };
 
   /* Charger consignes */
   useEffect(() => {
@@ -104,26 +134,121 @@ const Parametrage = () => {
     fetchConsignes();
   }, []);
 
-  const handleConsigneChange = (champ: string, selected: Consigne[] | null) => {
-    setSelectedConsignes((prev) => ({
-      ...prev,
-      [champ]: selected || [],
-    }));
+  const handleAddConsigne = () => {
+    if (!selectedConsigneId) {
+      alert("Sélectionnez d'abord une consigne");
+      return;
+    }
+
+    // Vérifier si la consigne existe déjà
+    if (consignesGroupes.some((c) => c.consigne_id === selectedConsigneId)) {
+      alert("Cette consigne est déjà ajoutée");
+      return;
+    }
+
+    const newConsigneGroupes: ConsigneGroupes = {
+      consigne_id: selectedConsigneId as number,
+      groupes: [],
+      parametres: {
+        valeur_defaut: "",
+      },
+    };
+
+    setConsignesGroupes([...consignesGroupes, newConsigneGroupes]);
+    setSelectedConsigneId("");
+    setSelectedGroupChamps([]);
+  };
+
+  const handleAddGroupe = (consigneId: number) => {
+    if (selectedGroupChamps.length === 0) {
+      alert("Ajoutez au moins un champ au groupe");
+      return;
+    }
+
+    setConsignesGroupes((prev) =>
+      prev.map((c) => {
+        if (c.consigne_id === consigneId) {
+          const nextOrdre = (c.groupes.length || 0) + 1;
+          return {
+            ...c,
+            groupes: [
+              ...c.groupes,
+              {
+                ordre: nextOrdre,
+                champs: selectedGroupChamps,
+              },
+            ],
+          };
+        }
+        return c;
+      })
+    );
+
+    setSelectedGroupChamps([]);
+  };
+
+  const handleRemoveConsigne = (consigneId: number) => {
+    setConsignesGroupes((prev) =>
+      prev.filter((c) => c.consigne_id !== consigneId)
+    );
+  };
+
+  const handleRemoveGroupe = (consigneId: number, ordre: number) => {
+    setConsignesGroupes((prev) =>
+      prev.map((c) => {
+        if (c.consigne_id === consigneId) {
+          return {
+            ...c,
+            groupes: c.groupes
+              .filter((g) => g.ordre !== ordre)
+              .map((g, idx) => ({ ...g, ordre: idx + 1 })),
+          };
+        }
+        return c;
+      })
+    );
   };
 
   const handleSaveChamps = async () => {
-    // Ex: envoyer les consignes associées aux champs à l'API
-    /* try {
-      const payload = champs.map((c) => ({
-        champ: c.champ,
-        consignes: selectedConsignes[c.champ]?.map((x) => x.id) ?? [],
-      }));
-      await api.post("/consignes/parametrage/save", payload);
+    if (!selectedDossier || !selectedCodeDossier) {
+      alert("Veuillez sélectionner un dossier et un code dossier");
+      return;
+    }
+
+    if (consignesGroupes.length === 0) {
+      alert("Ajoutez au moins une consigne");
+      return;
+    }
+
+    // Récupérer les noms des dossier et code dossier
+    const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
+    const codeDossierInfo = codeDossiers.find(
+      (c) => c.id_code_dossier === selectedCodeDossier
+    );
+
+    if (!dossierInfo || !codeDossierInfo) {
+      alert("Erreur: dossier ou code dossier non trouvé");
+      return;
+    }
+
+    const payload: PayloadConsignes = {
+      nom_dossier: dossierInfo.nom_dossier,
+      nom_code_dossier: codeDossierInfo.code_dossier,
+      consignes: consignesGroupes,
+    };
+
+    console.log("Payload à envoyer:", JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await api.post("/consignes/parametrage/add", payload);
+      console.log("Réponse du serveur:", response.data);
       alert("Enregistré avec succès !");
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors de l'enregistrement");
-    } */
+      setConsignesGroupes([]);
+    } catch (err: any) {
+      console.error("Erreur détaillée:", err);
+      const errorMessage = err?.response?.data?.message || err?.message || "Erreur inconnue";
+      alert(`Erreur lors de l'enregistrement:\n${errorMessage}`);
+    }
   };
 
   const handleExport = async () => {
@@ -146,47 +271,6 @@ const Parametrage = () => {
       console.error(err);
       alert("Erreur lors de l'export");
     }
-  };
-
-  const selectStyles = {
-    control: (base: any) => ({
-      ...base,
-      backgroundColor: theme === "dark" ? "#1f2a5a" : "#ffffff",
-      borderColor: theme === "dark" ? "#4b5563" : "#d1d5db",
-      color: theme === "dark" ? "#f9fafb" : "#111827",
-    }),
-    menu: (base: any) => ({
-      ...base,
-      backgroundColor: theme === "dark" ? "#1f2a5a" : "#ffffff",
-    }),
-    option: (base: any, state: any) => ({
-      ...base,
-      backgroundColor: state.isFocused
-        ? theme === "dark"
-          ? "#374151"
-          : "#f3f4f6"
-        : theme === "dark"
-          ? "#1f2a5a"
-          : "#ffffff",
-      color: theme === "dark" ? "#f9fafb" : "#111827",
-      cursor: "pointer",
-    }),
-    multiValue: (base: any) => ({
-      ...base,
-      backgroundColor: theme === "dark" ? "#374151" : "#e5e7eb",
-    }),
-    multiValueLabel: (base: any) => ({
-      ...base,
-      color: theme === "dark" ? "#f9fafb" : "#111827",
-    }),
-    multiValueRemove: (base: any) => ({
-      ...base,
-      color: theme === "dark" ? "#f9fafb" : "#111827",
-      ":hover": {
-        backgroundColor: "#ef4444",
-        color: "#ffffff",
-      },
-    }),
   };
 
   return (
@@ -239,7 +323,8 @@ const Parametrage = () => {
         {/* Bouton Valider */}
         <div className="md:col-span-1">
           <button
-            type="submit"
+            type="button"
+            onClick={handleValidateDossier}
             disabled={!selectedDossier || !selectedCodeDossier}
             className="w-full px-6 py-2.5 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
@@ -251,51 +336,163 @@ const Parametrage = () => {
 
       {/* Champs & Consignes + Colonne droite */}
       <div className="mt-6 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Colonne gauche */}
-        <div className="md:col-span-2 bg-white dark:bg-[#0f173a] p-6 rounded-2xl shadow-lg space-y-4">
-          {champs.map((c) => (
-            <div key={c.idq} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-              {/* Champ */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Champ
-                </label>
-                <input
-                  type="text"
-                  value={c.idq}
-                  disabled
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 px-4 py-2.5 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-              {/* Consigne */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Consigne
-                </label>
-                <Select
-                  isMulti
-                  options={consignes.map((x) => ({
-                    value: x.id,
-                    label: x.libelle,
-                  }))}
-                  styles={selectStyles}
-                  onChange={(selected: any) =>
-                    handleConsigneChange(
-                      c.idq,
-                      selected?.map((s: any) => ({
-                        id: s.value,
-                        libelle: s.label,
-                      })) || []
-                    )
-                  }
-                />
+        {/* Colonne gauche - Gestion des consignes */}
+        <div className="md:col-span-2 bg-white dark:bg-[#0f173a] p-6 rounded-2xl shadow-lg space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Gestion des consignes
+            </h3>
+
+            {/* Ajouter consigne */}
+            <div className="space-y-4 p-4 bg-gray-50 dark:bg-[#1f2a5a] rounded-lg mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Sélectionner consigne
+                  </label>
+                  <select
+                    value={selectedConsigneId}
+                    onChange={(e) => setSelectedConsigneId(Number(e.target.value) || "")}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] text-gray-900 dark:text-gray-100 px-4 py-2.5 focus:ring-2 focus:ring-[#FC8404] outline-none"
+                  >
+                    <option value="">— Choisir une consigne —</option>
+                    {consignes
+                      .filter(
+                        (c) => !consignesGroupes.some((cg) => cg.consigne_id === c.id)
+                      )
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.libelle}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={handleAddConsigne}
+                    className="w-full px-4 py-2.5 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={18} />
+                    Ajouter consigne
+                  </button>
+                </div>
               </div>
             </div>
-          ))}
+
+            {/* Consignes ajoutées */}
+            <div className="space-y-6">
+              {consignesGroupes.map((cg) => {
+                const consigneInfo = consignes.find((c) => c.id === cg.consigne_id);
+                return (
+                  <div
+                    key={cg.consigne_id}
+                    className="p-4 border border-gray-300 dark:border-gray-600 rounded-lg space-y-4"
+                  >
+                    {/* En-tête consigne */}
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 dark:text-white">
+                          {consigneInfo?.libelle}
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          ID: {cg.consigne_id}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveConsigne(cg.consigne_id)}
+                        className="px-3 py-1 rounded-lg bg-red-500 text-white text-sm hover:bg-red-600"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+
+                    {/* Groupes */}
+                    <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
+                      {cg.groupes.length > 0 && (
+                        <div>
+                          <h5 className="font-medium text-sm text-gray-900 dark:text-white mb-2">
+                            Groupes ({cg.groupes.length})
+                          </h5>
+                          <div className="space-y-2">
+                            {cg.groupes.map((groupe) => (
+                              <div
+                                key={groupe.ordre}
+                                className="flex justify-between items-start p-2 bg-white dark:bg-[#0f173a] rounded border border-gray-200 dark:border-gray-600"
+                              >
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    Ordre: {groupe.ordre}
+                                  </p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                    Champs ({groupe.champs.length}): {groupe.champs.join(", ")}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveGroupe(cg.consigne_id, groupe.ordre)}
+                                  className="ml-2 px-2 py-1 rounded bg-red-100 text-red-600 text-xs hover:bg-red-200"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ajouter groupe */}
+                      <div className="mt-3 p-3 bg-blue-50 dark:bg-[#374151] rounded space-y-2">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                          Sélectionner champs pour nouveau groupe
+                        </label>
+                        <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-[#0f173a]">
+                          {champs.map((champ) => (
+                            <label
+                              key={champ.idq}
+                              className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedGroupChamps.includes(champ.idq)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedGroupChamps([
+                                      ...selectedGroupChamps,
+                                      champ.idq,
+                                    ]);
+                                  } else {
+                                    setSelectedGroupChamps(
+                                      selectedGroupChamps.filter(
+                                        (c) => c !== champ.idq
+                                      )
+                                    );
+                                  }
+                                }}
+                                className="w-4 h-4 cursor-pointer"
+                              />
+                              {champ.idq}
+                            </label>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddGroupe(cg.consigne_id)}
+                          disabled={selectedGroupChamps.length === 0}
+                          className="w-full px-3 py-1.5 rounded bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
+                        >
+                          + Ajouter groupe
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Bouton Enregistrer */}
-          {champs.length > 0 && (
-            <div className="flex justify-end mt-4">
+          {consignesGroupes.length > 0 && (
+            <div className="flex justify-end pt-4 border-t border-gray-300 dark:border-gray-600">
               <button
                 type="button"
                 onClick={handleSaveChamps}
