@@ -44,6 +44,9 @@ interface ConsigneGroupes {
 interface PayloadConsignes {
   nom_dossier: string;
   nom_code_dossier: string;
+  // identifiant correspondant à la table codifications côté backend
+  //id_codification?: number;
+  codification_id?: number;
   consignes: ConsigneGroupes[];
 }
 
@@ -65,6 +68,9 @@ const Parametrage = () => {
   const [consignesGroupes, setConsignesGroupes] = useState<ConsigneGroupes[]>([]);
   const [selectedConsigneId, setSelectedConsigneId] = useState<number | "">("");
   const [selectedGroupChamps, setSelectedGroupChamps] = useState<string[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  // identifiant de la codification récupéré via nom/code dossier
+  const [codificationId, setCodificationId] = useState<number | null>(null);
 
   /* Charger dossiers */
   useEffect(() => {
@@ -112,6 +118,53 @@ const Parametrage = () => {
         },
       });
       setChamps(res.data);
+
+      // récupérer id de codification à partir du nom et code dossier
+      let codifId: number | null = null;
+      try {
+        console.debug("lookup codification with", {
+          nom_dossier: dossierInfo.nom_dossier,
+          code_dossier: codeDossierInfo.code_dossier,
+        });
+        const codifRes = await api.get(`/codifications`, {
+          params: {
+            nom_dossier: dossierInfo.nom_dossier,
+            code_dossier: codeDossierInfo.code_dossier,
+          },
+        });
+        codifId = codifRes.data?.id ?? null;
+      } catch (e) {
+        console.error("Erreur lors de la récupération de l'id de codification", e);
+      }
+      if (!codifId) {
+        //alert("Impossible de trouver la codification associée");
+        setConsignesGroupes([]);
+        setEditingId(null);
+        return;
+      }
+      console.debug("codificationId fetched", codifId);
+      setCodificationId(codifId);
+
+      // Vérifier s'il existe déjà un parametrage pour cette codification
+      try {
+        const resp = await api.get(`/consignes/parametrage/${codifId}`);
+        const data = resp.data;
+        console.debug("parametrage response for", codifId, data);
+
+        // L'API retourne directement un tableau de consignes
+        if (Array.isArray(data) && data.length > 0) {
+          setConsignesGroupes(data);
+          console.debug("setting consignesGroupes", data);
+          setEditingId(codifId);
+        } else {
+          setConsignesGroupes([]);
+          setEditingId(null);
+        }
+      } catch (err) {
+        // Pas de paramétrage existant ou erreur non bloquante
+        setConsignesGroupes([]);
+        setEditingId(null);
+      }
     } catch (err) {
       console.error(err);
       alert("Erreur lors du chargement des champs");
@@ -234,16 +287,30 @@ const Parametrage = () => {
     const payload: PayloadConsignes = {
       nom_dossier: dossierInfo.nom_dossier,
       nom_code_dossier: codeDossierInfo.code_dossier,
+      codification_id: codificationId ?? undefined,
+      //id_codification: codificationId ?? undefined,
       consignes: consignesGroupes,
     };
 
     console.log("Payload à envoyer:", JSON.stringify(payload, null, 2));
 
     try {
-      const response = await api.post("/consignes/parametrage/add", payload);
-      console.log("Réponse du serveur:", response.data);
-      alert("Enregistré avec succès !");
+      if (editingId) {
+        const response = await api.put(`/consignes/parametrage/update/${editingId}`, payload, {
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+        );
+        console.log("Réponse du serveur (update):", response.data);
+      } else {
+        const response = await api.post("/consignes/parametrage/add", payload);
+        console.log("Réponse du serveur (add):", response.data);
+      }
+      alert(editingId ? "Modifié avec succès !" : "Enregistré avec succès !");
       setConsignesGroupes([]);
+      setEditingId(null);
+      setCodificationId(null);
     } catch (err: any) {
       console.error("Erreur détaillée:", err);
       const errorMessage = err?.response?.data?.message || err?.message || "Erreur inconnue";
@@ -272,6 +339,42 @@ const Parametrage = () => {
       alert("Erreur lors de l'export");
     }
   };
+
+  const handleLancer = async () => {
+    if (!codificationId) {
+      alert("Veuillez valider un dossier avant de lancer.");
+      return;
+    }
+
+    try {
+      const response = await api.post(
+        `/normalisation/${codificationId}`
+      );
+
+      const data = response.data;
+
+      if (data.status === "OK" && data.url) {
+
+        // Télécharger automatiquement le fichier
+        const link = document.createElement("a");
+        link.href = data.url;
+        link.setAttribute("download", "");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+      } else {
+        alert("Erreur lors de la génération du fichier");
+      }
+
+    } catch (error: any) {
+      console.error("Erreur:", error);
+      alert("Erreur lors du lancement");
+    }
+  };
+
+
+
 
   return (
     <div className="p-6 bg-[#ffffff] dark:bg-[#080d24] min-h-[calc(100vh-72px-100px)]">
@@ -492,14 +595,35 @@ const Parametrage = () => {
 
           {/* Bouton Enregistrer */}
           {consignesGroupes.length > 0 && (
-            <div className="flex justify-end pt-4 border-t border-gray-300 dark:border-gray-600">
+            <div className="flex items-center justify-end pt-4 border-t border-gray-300 dark:border-gray-600 gap-4">
+              {editingId && (
+                <div className="mr-auto text-sm text-gray-600 dark:text-gray-300">
+                  Paramétrage chargé: ID {editingId}
+                </div>
+              )}
+
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setCodificationId(null);
+                    // alert("Mode édition annulé");
+                    window.location.reload();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300"
+                >
+                  Annuler
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={handleSaveChamps}
                 className="px-6 py-2.5 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] flex items-center gap-2"
               >
                 <CheckCircle size={18} />
-                Enregistrer
+                {editingId ? "Modifier" : "Enregistrer"}
               </button>
             </div>
           )}
@@ -508,7 +632,7 @@ const Parametrage = () => {
         {/* Colonne droite */}
         <div className="md:col-span-1 flex flex-col gap-4 items-center justify-start bg-white dark:bg-[#0f173a] p-6 rounded-2xl shadow-lg">
           <button
-            onClick={handleExport}
+            onClick={handleLancer}
             className="w-full py-6 rounded-lg bg-[#10b981] hover:bg-[#0f9d75] text-white font-semibold flex items-center justify-center gap-2"
           >
             <Download size={20} /> Lancer
