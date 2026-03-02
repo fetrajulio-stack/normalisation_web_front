@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Parametrage from "./pages/Parametrage/Parametrage";
-import Normalisation from "./pages/normalisation/Normalisation";
 import ScrollToTop from "./components/ScrollToTop";
 import PageTitle from "./components/PageTitle";
 import Login from "./pages/auth/Login";
@@ -31,14 +30,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Navigate to="/parametrage" replace />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/normalisation"
-              element={
-                <ProtectedRoute>
-                  <Normalisation />
                 </ProtectedRoute>
               }
             />

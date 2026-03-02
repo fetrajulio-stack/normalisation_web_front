@@ -8,10 +8,10 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +22,7 @@ export default function Login() {
 
     if (success) {
       toast.success("Connexion réussie");
-      const redirectPath = sessionStorage.getItem("redirectAfterLogin") || "/normalisation";
+      const redirectPath = sessionStorage.getItem("redirectAfterLogin") || "/parametrage";
 
       sessionStorage.removeItem("redirectAfterLogin");
 
@@ -58,7 +58,8 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-[#1b254b] focus:outline-none focus:ring-2 focus:ring-[#FC8404] placeholder-gray-400 dark:placeholder-gray-400"
+              className={`w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#FC8404] placeholder-gray-400
+    ${email ? "bg-white dark:bg-white" : "dark:bg-[#1b254b] bg-white/5"}`}
             />
           </div>
 
@@ -66,12 +67,13 @@ export default function Login() {
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-300" size={18} />
             <input
-              type={showPassword ? "text" : "password"} // <-- change selon showPassword
+              type={showPassword ? "text" : "password"}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Mot de passe"
-              className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-[#1b254b] focus:outline-none focus:ring-2 focus:ring-[#FC8404] placeholder-gray-400 dark:placeholder-gray-400"
+              className={`w-full pl-10 pr-10 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#FC8404] placeholder-gray-400
+    ${password ? "bg-white dark:bg-white" : "dark:bg-[#1b254b] bg-white/5"}`}
             />
             <button
               type="button"

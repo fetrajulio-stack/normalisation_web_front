@@ -1,12 +1,6 @@
 import { createContext, useContext, useState } from "react";
-
-export interface User {
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  token: string;
-}
+import api from "../services/api"; // adapte le chemin si besoin
+import type { User } from "../types/User";
 
 interface AuthContextType {
   user: User | null;
@@ -16,38 +10,44 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const STATIC_EMAIL = "snrakotoarivony@outsourcia-group.com";
-const STATIC_PASSWORD = "Snrakotoarivony_456";
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
   });
 
-  const login = async (email: string, password: string) => {
-    await new Promise((res) => setTimeout(res, 1200)); // fake API delay
-
-    if (email === STATIC_EMAIL && password === STATIC_PASSWORD) {
-      const connectedUser: User = {
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const response = await api.post("/login", {
         email,
-        firstName: "SNR",
-        lastName: "Rakotoarivony",
-        role: "Administrateur",
-        token: "dfkdflhsdfkljhsdjksdjksdjks"
-      };
+        password,
+      });
 
-      setUser(connectedUser);
-      localStorage.setItem("user", JSON.stringify(connectedUser));
+      const { token, user } = response.data;
+
+      // 🔐 stocker séparément le token
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setUser(user);
+
       return true;
+    } catch (error) {
+      console.error("Erreur login:", error);
+      return false;
     }
-
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async () => {
+    try {
+      await api.post("/logout"); // optionnel si tu as une route logout
+    } catch (error) {
+      console.warn("Logout API error (ignored)");
+    }
+
+    localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setUser(null);
   };
 
   return (

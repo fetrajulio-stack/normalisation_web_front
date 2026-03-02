@@ -36,6 +36,8 @@ export default function Header() {
     }
   }, [openMobileMenu]);
 
+  console.log(user);
+
   return (
     <nav className={`flex items-center justify-between fixed z-50 top-0 w-full px-6 md:px-16 lg:px-24 xl:px-32 py-4 ${openMobileMenu ? '' : 'backdrop-blur'} bg-white/70 dark:bg-[#080d24]/70`}>
       <Link to="/">
@@ -92,7 +94,7 @@ export default function Header() {
             {openDropdown && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#080d24] border border-gray-200 dark:border-slate-700 rounded-md shadow-lg py-2 z-50">
                 <div className="px-4 py-2 border-b border-gray-200 dark:border-slate-700">
-                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{user.firstName} {user.lastName}</p>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{user?.prenom} {user?.nom}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                 </div>
                 <Link

@@ -3,6 +3,8 @@ import PageHeader from "../../components/PageHeader";
 import useThemeContext from "../../context/ThemeContext";
 import { CheckCircle, Download } from "lucide-react";
 import api from "../../services/api";
+import useAuth from "../../context/AuthContext";
+import { PROFIL_CQ, PROFIL_ETUDES } from "../../constants/Constant";
 
 export interface Cathegory {
   id_code_dossier: number;
@@ -53,6 +55,9 @@ interface PayloadConsignes {
 const Parametrage = () => {
   const { theme } = useThemeContext();
 
+  const { user } = useAuth();
+  const profil = user?.profil?.libelle;
+
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
   const [codeDossiers, setCodeDossiers] = useState<Cathegory[]>([]);
   const [selectedDossier, setSelectedDossier] = useState<number | "">("");
@@ -76,7 +81,7 @@ const Parametrage = () => {
   useEffect(() => {
     async function fetchDossiers() {
       try {
-        const res = await api.get("/list-codifications");
+        const res = await api.get("/parametrage/list-codifications");
         setDossiers(res.data);
       } catch (err) {
         console.error(err);
@@ -111,7 +116,7 @@ const Parametrage = () => {
 
       if (!dossierInfo || !codeDossierInfo) return;
 
-      const res = await api.get(`/list-champs`, {
+      const res = await api.get(`/parametrage/list-champs`, {
         params: {
           nom_dossier: dossierInfo.nom_dossier,
           nom_code_dossier: codeDossierInfo.code_dossier,
@@ -126,7 +131,7 @@ const Parametrage = () => {
           nom_dossier: dossierInfo.nom_dossier,
           code_dossier: codeDossierInfo.code_dossier,
         });
-        const codifRes = await api.get(`/codifications`, {
+        const codifRes = await api.get('/parametrage/codifications', {
           params: {
             nom_dossier: dossierInfo.nom_dossier,
             code_dossier: codeDossierInfo.code_dossier,
@@ -147,7 +152,7 @@ const Parametrage = () => {
 
       // Vérifier s'il existe déjà un parametrage pour cette codification
       try {
-        const resp = await api.get(`/consignes/parametrage/${codifId}`);
+        const resp = await api.get(`/consigne/parametrage/${codifId}`);
         const data = resp.data;
         console.debug("parametrage response for", codifId, data);
 
@@ -175,7 +180,7 @@ const Parametrage = () => {
   useEffect(() => {
     async function fetchConsignes() {
       try {
-        const res = await api.get("/consignes/list");
+        const res = await api.get("/consigne/list");
 
         const { data } = res.data;
 
@@ -296,7 +301,7 @@ const Parametrage = () => {
 
     try {
       if (editingId) {
-        const response = await api.put(`/consignes/parametrage/update/${editingId}`, payload, {
+        const response = await api.put(`/consigne/parametrage/update/${editingId}`, payload, {
           headers: {
             "Content-Type": "application/json"
           }
@@ -304,7 +309,7 @@ const Parametrage = () => {
         );
         console.log("Réponse du serveur (update):", response.data);
       } else {
-        const response = await api.post("/consignes/parametrage/add", payload);
+        const response = await api.post("/consigne/parametrage/add", payload);
         console.log("Réponse du serveur (add):", response.data);
       }
       alert(editingId ? "Modifié avec succès !" : "Enregistré avec succès !");
@@ -315,28 +320,6 @@ const Parametrage = () => {
       console.error("Erreur détaillée:", err);
       const errorMessage = err?.response?.data?.message || err?.message || "Erreur inconnue";
       alert(`Erreur lors de l'enregistrement:\n${errorMessage}`);
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const res = await api.get("/consignes/parametrage/add", {
-        params: { format: exportFormat },
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `export_${new Date().toISOString()}.${exportFormat === "excel" ? "xlsx" : "txt"}`
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors de l'export");
     }
   };
 
@@ -373,8 +356,8 @@ const Parametrage = () => {
     }
   };
 
-
-
+  const isEtudes = profil === PROFIL_ETUDES;
+  const isCQ = profil === PROFIL_CQ;
 
   return (
     <div className="p-6 bg-[#ffffff] dark:bg-[#080d24] min-h-[calc(100vh-72px-100px)]">
@@ -472,9 +455,14 @@ const Parametrage = () => {
                 </div>
                 <div className="flex items-end">
                   <button
+                    disabled={isCQ}
                     type="button"
                     onClick={handleAddConsigne}
-                    className="w-full px-4 py-2.5 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition flex items-center justify-center gap-2"
+                    className={`w-full px-4 py-2.5 rounded-lg text-white font-semibold flex items-center justify-center gap-2
+    ${isCQ
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-[#FC8404] hover:bg-[#e67603] transition"}
+  `}
                   >
                     <CheckCircle size={18} />
                     Ajouter consigne
@@ -632,8 +620,13 @@ const Parametrage = () => {
         {/* Colonne droite */}
         <div className="md:col-span-1 flex flex-col gap-4 items-center justify-start bg-white dark:bg-[#0f173a] p-6 rounded-2xl shadow-lg">
           <button
+            disabled={isEtudes}
             onClick={handleLancer}
-            className="w-full py-6 rounded-lg bg-[#10b981] hover:bg-[#0f9d75] text-white font-semibold flex items-center justify-center gap-2"
+            className={`w-full py-6 rounded-lg text-white font-semibold flex items-center justify-center gap-2
+    ${isEtudes
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#10b981] hover:bg-[#0f9d75]"}
+  `}
           >
             <Download size={20} /> Lancer
           </button>
