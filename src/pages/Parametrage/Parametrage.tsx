@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import PageHeader from "../../components/PageHeader";
-import useThemeContext from "../../context/ThemeContext";
 import { CheckCircle, Download } from "lucide-react";
 import api from "../../services/api";
 import useAuth from "../../context/AuthContext";
@@ -53,7 +52,7 @@ interface PayloadConsignes {
 }
 
 const Parametrage = () => {
-  const { theme } = useThemeContext();
+ // const { theme } = useThemeContext();
 
   const { user } = useAuth();
   const profil = user?.profil?.libelle;
@@ -62,11 +61,11 @@ const Parametrage = () => {
   const [codeDossiers, setCodeDossiers] = useState<Cathegory[]>([]);
   const [selectedDossier, setSelectedDossier] = useState<number | "">("");
   const [selectedCodeDossier, setSelectedCodeDossier] = useState<number | "">("");
-  const [loadingCodes, setLoadingCodes] = useState(false);
+ // const [loadingCodes, setLoadingCodes] = useState(false);
 
   const [champs, setChamps] = useState<Champ[]>([]);
   const [consignes, setConsignes] = useState<Consigne[]>([]);
-  const [selectedConsignes, setSelectedConsignes] = useState<Consigne[]>({});
+ // const [selectedConsignes, setSelectedConsignes] = useState<Consigne[]>({});
   const [exportFormat, setExportFormat] = useState<"excel" | "txt">("excel");
 
   // État pour les consignes avec groupes
@@ -358,6 +357,7 @@ const Parametrage = () => {
 
   const isEtudes = profil === PROFIL_ETUDES;
   const isCQ = profil === PROFIL_CQ;
+  const loadingCodes = false;
 
   return (
     <div className="p-6 bg-[#ffffff] dark:bg-[#080d24] min-h-[calc(100vh-72px-100px)]">
