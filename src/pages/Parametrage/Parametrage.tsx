@@ -52,11 +52,19 @@ interface PayloadConsignes {
   consignes: ConsigneGroupes[];
 }
 
+
+
 const Parametrage = () => {
   const { theme } = useThemeContext();
 
   const { user } = useAuth();
   const profil = user?.profil?.libelle;
+
+const [loadingProcess, setLoadingProcess] = useState(false);
+const [loadingMessage, setLoadingMessage] = useState("");
+
+
+
 
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
   const [codeDossiers, setCodeDossiers] = useState<Cathegory[]>([]);
@@ -323,38 +331,111 @@ const Parametrage = () => {
     }
   };
 
-  const handleLancer = async () => {
-    if (!codificationId) {
-      alert("Veuillez valider un dossier avant de lancer.");
-      return;
-    }
+const handleLancer = async () => {
 
-    try {
-      const response = await api.post(
-        `/normalisation/${codificationId}`
-      );
+  if (!codificationId || !selectedDossier || !selectedCodeDossier) {
+    alert("Veuillez valider un dossier avant de lancer.");
+    return;
+  }
 
-      const data = response.data;
+  const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
+  const codeDossierInfo = codeDossiers.find(
+    (c) => c.id_code_dossier === selectedCodeDossier
+  );
 
-      if (data.status === "OK" && data.url) {
+  if (!dossierInfo || !codeDossierInfo) {
+    alert("Erreur dossier ou code dossier");
+    return;
+  }
 
-        // Télécharger automatiquement le fichier
-        const link = document.createElement("a");
-        link.href = data.url;
-        link.setAttribute("download", "");
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-
-      } else {
-        alert("Erreur lors de la génération du fichier");
-      }
-
-    } catch (error: any) {
-      console.error("Erreur:", error);
-      alert("Erreur lors du lancement");
-    }
+  const payload = {
+    nom_dossier: dossierInfo.nom_dossier,
+    nom_code_dossier: codeDossierInfo.code_dossier,
   };
+
+  setLoadingProcess(true);
+
+  try {
+
+    /* =========================
+       1️⃣ API normalise
+    ========================= */
+
+    setLoadingMessage("⏳ Création table source...");
+
+    await api.get("/normalise", { params: payload });
+
+    console.log("Table Source créée");
+
+
+  } catch (error) {
+
+    console.error("Erreur normalise", error);
+    alert("Erreur lors de la création de la table Source");
+
+    setLoadingProcess(false);
+    return;
+
+  }
+
+  /* =========================
+     2️⃣ API importmdb
+  ========================= */
+
+  try {
+
+    setLoadingMessage("⏳ Import MDB...");
+
+    await api.get("/importmdb", { params: payload });
+
+    console.log("Import MDB terminé");
+
+  } catch (error) {
+
+    console.warn("Import MDB échoué mais on continue...", error);
+
+  }
+
+  /* =========================
+     3️⃣ API normalisation
+  ========================= */
+
+  try {
+
+    setLoadingMessage("⏳ Normalisation et génération Excel...");
+
+    const response = await api.post(`/normalisation/${codificationId}`);
+
+    const data = response.data;
+
+    if (data.status === "OK" && data.url) {
+
+      const link = document.createElement("a");
+      link.href = data.url;
+      link.setAttribute("download", "");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setLoadingMessage("✅ Fichier Excel généré !");
+      alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
+
+    } else {
+      alert("Erreur lors de la génération du fichier");
+    }
+
+  } catch (error) {
+
+    console.error("Erreur normalisation", error);
+    alert("Erreur lors de la normalisation");
+
+  } finally {
+
+    setLoadingProcess(false);
+
+  }
+};
+
 
   const isEtudes = profil === PROFIL_ETUDES;
   const isCQ = profil === PROFIL_CQ;
@@ -630,6 +711,12 @@ const Parametrage = () => {
           >
             <Download size={20} /> Lancer
           </button>
+{loadingProcess && (
+  <div className="w-full mb-4 p-4 rounded-lg bg-blue-100 text-blue-800 text-center font-semibold animate-pulse">
+    {loadingMessage}
+  </div>
+)}
+
 
           <div className="w-full mt-4">
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
