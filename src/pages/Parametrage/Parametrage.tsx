@@ -4,6 +4,7 @@ import { CheckCircle, Download } from "lucide-react";
 import api from "../../services/api";
 import useAuth from "../../context/AuthContext";
 import { PROFIL_CQ, PROFIL_ETUDES } from "../../constants/Constant";
+import axios from "axios";
 
 export interface Cathegory {
   id_code_dossier: number;
@@ -354,11 +355,81 @@ const handleLancer = async () => {
 
   setLoadingProcess(true);
 
+  const token = localStorage.getItem("token");
+  const baseURL = import.meta.env.VITE_API_URL;
+
+  /* =========================
+       1️⃣ API normalise
+    ========================= */
+  setLoadingMessage("⏳ Création table source...");
+
+  axios.get(`${baseURL}normalise`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params: payload
+    })
+    .then(() => {
+      /* =========================
+     2️⃣ API importmdb
+      ========================= */
+      setLoadingMessage("⏳ Import MDB...");
+
+      axios.get(`${baseURL}importmdb`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        params: payload
+      })
+       .catch((error) => {
+          console.error("Erreur:", error);
+        })
+        .finally(() => {
+            /* =========================
+            3️⃣ API normalisation
+            ========================= */
+            setLoadingMessage("⏳ Normalisation et génération Excel...");
+
+            axios.post(`${baseURL}normalisation/${codificationId}`,{}, {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            })
+            .then((res) => {
+              const filename = res.data.filename;
+              const url = `${baseURL}downloadexcel/${filename}`;
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = filename;
+              link.click();
+
+              alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
+            })
+            .catch((error) => {
+              console.error("Erreur:", error);
+            })
+            .finally(() => {
+              console.log("Requête terminée");
+
+              setLoadingProcess(false);
+            });
+        })
+    })
+    .catch((error) => {
+      console.error("Erreur:", error);
+    })
+    .finally(() => {
+      console.log("Requête terminée");
+    });
+
+/*
   try {
+ */ 
 
     /* =========================
        1️⃣ API normalise
     ========================= */
+   /* 
 
     setLoadingMessage("⏳ Création table source...");
 
@@ -376,11 +447,12 @@ const handleLancer = async () => {
     return;
 
   }
+    */
 
   /* =========================
      2️⃣ API importmdb
   ========================= */
-
+/*
   try {
 
     setLoadingMessage("⏳ Import MDB...");
@@ -394,10 +466,12 @@ const handleLancer = async () => {
     console.warn("Import MDB échoué mais on continue...", error);
 
   }
+    */
 
   /* =========================
      3️⃣ API normalisation
   ========================= */
+  /*
 
   try {
 
@@ -406,7 +480,9 @@ const handleLancer = async () => {
     const response = await api.post(`/normalisation/${codificationId}`);
 
     const data = response.data;
+    */
 
+    /*
     if (data.status === "OK" && data.url) {
 
       const link = document.createElement("a");
@@ -422,6 +498,17 @@ const handleLancer = async () => {
     } else {
       alert("Erreur lors de la génération du fichier");
     }
+      */
+    /*
+    if(data.status === "OK") {
+      await api.get(`/downloadexcel/${data.filename}`);
+      alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
+    }
+    else {
+      alert("Erreur lors de la génération du fichier");
+    }
+      */
+    /* 
 
   } catch (error) {
 
@@ -433,6 +520,7 @@ const handleLancer = async () => {
     setLoadingProcess(false);
 
   }
+    */
 };
 
 
