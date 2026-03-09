@@ -52,29 +52,28 @@ interface PayloadConsignes {
   consignes: ConsigneGroupes[];
 }
 
-
-
 const Parametrage = () => {
- // const { theme } = useThemeContext();
+  // const { theme } = useThemeContext();
 
   const { user } = useAuth();
   const profil = user?.profil?.libelle;
 
-const [loadingProcess, setLoadingProcess] = useState(false);
-const [loadingMessage, setLoadingMessage] = useState("");
+  const [loadingProcess, setLoadingProcess] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
-
-
+  const [searchDossier, setSearchDossier] = useState("");
+  const [filteredDossiers, setFilteredDossiers] = useState<Dossier[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
   const [codeDossiers, setCodeDossiers] = useState<Cathegory[]>([]);
   const [selectedDossier, setSelectedDossier] = useState<number | "">("");
   const [selectedCodeDossier, setSelectedCodeDossier] = useState<number | "">("");
- // const [loadingCodes, setLoadingCodes] = useState(false);
+  // const [loadingCodes, setLoadingCodes] = useState(false);
 
   const [champs, setChamps] = useState<Champ[]>([]);
   const [consignes, setConsignes] = useState<Consigne[]>([]);
- // const [selectedConsignes, setSelectedConsignes] = useState<Consigne[]>({});
+  // const [selectedConsignes, setSelectedConsignes] = useState<Consigne[]>({});
   const [exportFormat, setExportFormat] = useState<"excel" | "txt">("excel");
 
   // État pour les consignes avec groupes
@@ -84,6 +83,26 @@ const [loadingMessage, setLoadingMessage] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   // identifiant de la codification récupéré via nom/code dossier
   const [codificationId, setCodificationId] = useState<number | null>(null);
+
+  useEffect(() => {
+
+    if (!searchDossier) {
+      setFilteredDossiers(dossiers);
+      return;
+    }
+
+    const filtered = dossiers.filter((d) =>
+      d.nom_dossier.toLowerCase().includes(searchDossier.toLowerCase())
+    );
+
+    setFilteredDossiers(filtered);
+
+  }, [searchDossier, dossiers]);
+
+
+
+
+
 
   /* Charger dossiers */
   useEffect(() => {
@@ -331,156 +350,156 @@ const [loadingMessage, setLoadingMessage] = useState("");
     }
   };
 
-const handleLancer = async () => {
+  const handleLancer = async () => {
 
-  if (!codificationId || !selectedDossier || !selectedCodeDossier) {
-    alert("Veuillez valider un dossier avant de lancer.");
-    return;
-  }
+    if (!codificationId || !selectedDossier || !selectedCodeDossier) {
+      alert("Veuillez valider un dossier avant de lancer.");
+      return;
+    }
 
-  const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
-  const codeDossierInfo = codeDossiers.find(
-    (c) => c.id_code_dossier === selectedCodeDossier
-  );
+    const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
+    const codeDossierInfo = codeDossiers.find(
+      (c) => c.id_code_dossier === selectedCodeDossier
+    );
 
-  if (!dossierInfo || !codeDossierInfo) {
-    alert("Erreur dossier ou code dossier");
-    return;
-  }
+    if (!dossierInfo || !codeDossierInfo) {
+      alert("Erreur dossier ou code dossier");
+      return;
+    }
 
-  const payload = {
-    nom_dossier: dossierInfo.nom_dossier,
-    nom_code_dossier: codeDossierInfo.code_dossier,
-  };
+    const payload = {
+      nom_dossier: dossierInfo.nom_dossier,
+      nom_code_dossier: codeDossierInfo.code_dossier,
+    };
 
-  setLoadingProcess(true);
+    setLoadingProcess(true);
 
-  const token = localStorage.getItem("token");
-  const baseURL = import.meta.env.VITE_API_URL;
+    const token = localStorage.getItem("token");
+    const baseURL = import.meta.env.VITE_API_URL;
 
-  /* =========================
-       1️⃣ API normalise
-    ========================= */
-  setLoadingMessage("⏳ Création table source...");
+    /* =========================
+         1️⃣ API normalise
+      ========================= */
+    setLoadingMessage("⏳ Création table source...");
 
-  axios.get(`${baseURL}normalise`, {
+    axios.get(`${baseURL}normalise`, {
       headers: {
         Authorization: `Bearer ${token}`
       },
       params: payload
     })
-    .then(() => {
-      /* =========================
-     2️⃣ API importmdb
-      ========================= */
-      setLoadingMessage("⏳ Import MDB...");
+      .then(() => {
+        /* =========================
+       2️⃣ API importmdb
+        ========================= */
+        setLoadingMessage("⏳ Import MDB...");
 
-      axios.get(`${baseURL}importmdb`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        params: payload
-      })
-       .catch((error) => {
-          console.error("Erreur:", error);
+        axios.get(`${baseURL}importmdb`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          params: payload
         })
-        .finally(() => {
+          .catch((error) => {
+            console.error("Erreur:", error);
+          })
+          .finally(() => {
             /* =========================
             3️⃣ API normalisation
             ========================= */
             setLoadingMessage("⏳ Normalisation et génération Excel...");
 
-            axios.post(`${baseURL}normalisation/${codificationId}`,{}, {
+            axios.post(`${baseURL}normalisation/${codificationId}`, {}, {
               headers: {
                 Authorization: `Bearer ${token}`
               }
             })
-            .then((res) => {
-              const filename = res.data.filename;
-              const url = `${baseURL}downloadexcel/${filename}`;
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = filename;
-              link.click();
+              .then((res) => {
+                const filename = res.data.filename;
+                const url = `${baseURL}downloadexcel/${filename}`;
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.click();
 
-              alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
-            })
-            .catch((error) => {
-              console.error("Erreur:", error);
-            })
-            .finally(() => {
-              console.log("Requête terminée");
+                alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
+              })
+              .catch((error) => {
+                console.error("Erreur:", error);
+              })
+              .finally(() => {
+                console.log("Requête terminée");
 
-              setLoadingProcess(false);
-            });
-        })
-    })
-    .catch((error) => {
-      console.error("Erreur:", error);
-    })
-    .finally(() => {
-      console.log("Requête terminée");
-    });
+                setLoadingProcess(false);
+              });
+          })
+      })
+      .catch((error) => {
+        console.error("Erreur:", error);
+      })
+      .finally(() => {
+        console.log("Requête terminée");
+      });
 
-/*
-  try {
- */ 
+    /*
+      try {
+     */
 
     /* =========================
        1️⃣ API normalise
     ========================= */
-   /* 
+    /* 
+ 
+     setLoadingMessage("⏳ Création table source...");
+ 
+     await api.get("/normalise", { params: payload });
+ 
+     console.log("Table Source créée");
+ 
+ 
+   } catch (error) {
+ 
+     console.error("Erreur normalise", error);
+     alert("Erreur lors de la création de la table Source");
+ 
+     setLoadingProcess(false);
+     return;
+ 
+   }
+     */
 
-    setLoadingMessage("⏳ Création table source...");
+    /* =========================
+       2️⃣ API importmdb
+    ========================= */
+    /*
+      try {
+    
+        setLoadingMessage("⏳ Import MDB...");
+    
+        await api.get("/importmdb", { params: payload });
+    
+        console.log("Import MDB terminé");
+    
+      } catch (error) {
+    
+        console.warn("Import MDB échoué mais on continue...", error);
+    
+      }
+        */
 
-    await api.get("/normalise", { params: payload });
-
-    console.log("Table Source créée");
-
-
-  } catch (error) {
-
-    console.error("Erreur normalise", error);
-    alert("Erreur lors de la création de la table Source");
-
-    setLoadingProcess(false);
-    return;
-
-  }
-    */
-
-  /* =========================
-     2️⃣ API importmdb
-  ========================= */
-/*
-  try {
-
-    setLoadingMessage("⏳ Import MDB...");
-
-    await api.get("/importmdb", { params: payload });
-
-    console.log("Import MDB terminé");
-
-  } catch (error) {
-
-    console.warn("Import MDB échoué mais on continue...", error);
-
-  }
-    */
-
-  /* =========================
-     3️⃣ API normalisation
-  ========================= */
-  /*
-
-  try {
-
-    setLoadingMessage("⏳ Normalisation et génération Excel...");
-
-    const response = await api.post(`/normalisation/${codificationId}`);
-
-    const data = response.data;
-    */
+    /* =========================
+       3️⃣ API normalisation
+    ========================= */
+    /*
+  
+    try {
+  
+      setLoadingMessage("⏳ Normalisation et génération Excel...");
+  
+      const response = await api.post(`/normalisation/${codificationId}`);
+  
+      const data = response.data;
+      */
 
     /*
     if (data.status === "OK" && data.url) {
@@ -521,7 +540,7 @@ const handleLancer = async () => {
 
   }
     */
-};
+  };
 
 
   const isEtudes = profil === PROFIL_ETUDES;
@@ -539,18 +558,37 @@ const handleLancer = async () => {
           <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-200">
             Dossier
           </label>
-          <select
-            value={selectedDossier}
-            onChange={(e) => setSelectedDossier(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1f2a5a] text-gray-900 dark:text-gray-100 px-4 py-2.5 focus:ring-2 focus:ring-[#FC8404] outline-none"
-          >
-            <option value="">— Sélectionner un dossier —</option>
-            {dossiers.map((d) => (
-              <option key={d.id_dossier} value={d.id_dossier}>
-                {d.nom_dossier}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Rechercher un dossier..."
+              value={searchDossier}
+              onChange={(e) => {
+                setSearchDossier(e.target.value);
+                setSelectedDossier("");
+                setShowSuggestions(true);
+              }}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-[#1f2a5a] text-white px-4 py-2.5 focus:ring-2 focus:ring-[#FC8404] outline-none"
+            />
+
+            {showSuggestions && filteredDossiers.length > 0 && (
+              <ul className="absolute z-10 w-full mt-1 max-h-48 overflow-auto rounded-lg border border-gray-300 bg-[#1f2a5a] shadow-lg text-white">
+                {filteredDossiers.map((d) => (
+                  <li
+                    key={d.id_dossier}
+                    onClick={() => {
+                      setSelectedDossier(d.id_dossier);
+                      setSearchDossier(d.nom_dossier);
+                      setShowSuggestions(false);
+                    }}
+                    className="px-4 py-2 cursor-pointer hover:bg-[#2a3570]"
+                  >
+                    {d.nom_dossier}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         {/* Code Dossier */}
@@ -799,11 +837,11 @@ const handleLancer = async () => {
           >
             <Download size={20} /> Lancer
           </button>
-{loadingProcess && (
-  <div className="w-full mb-4 p-4 rounded-lg bg-blue-100 text-blue-800 text-center font-semibold animate-pulse">
-    {loadingMessage}
-  </div>
-)}
+          {loadingProcess && (
+            <div className="w-full mb-4 p-4 rounded-lg bg-blue-100 text-blue-800 text-center font-semibold animate-pulse">
+              {loadingMessage}
+            </div>
+          )}
 
 
           <div className="w-full mt-4">
