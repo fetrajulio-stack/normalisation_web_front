@@ -905,8 +905,6 @@ const Parametrage = () => {
             </div>
           )}
 
-
-
           <button
             onClick={handleOpenDatamap}
             disabled={disableDatamap}
