@@ -101,9 +101,6 @@ const Parametrage = () => {
 
 
 
-
-
-
   /* Charger dossiers */
   useEffect(() => {
     async function fetchDossiers() {
