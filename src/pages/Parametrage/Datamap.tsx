@@ -23,15 +23,35 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
   const [showModal, setShowModal] = useState(false);
   const [datamap, setDatamap] = useState<DatamapField[]>([]);
 
-  const loadDatamap = useCallback(() => {
-    setDatamap(
-      champs.map((champ) => ({
-        ...champ,
-        position: 0,
-        longueur: 10,
-      }))
-    );
-  }, [champs]);
+  const loadDatamap = useCallback(async () => {
+    try {
+      const res = await api.get(`/parametre/datamap`, {
+        params: { codification_id: codificationId }
+      });
+      const savedDatamap = res.data.datamap || [];
+      setDatamap(
+        champs.map((champ) => {
+          const saved = savedDatamap.find((s: DatamapField) => s.idq === champ.idq);
+          return {
+            ...champ,
+            position: saved?.position || 0,
+            longueur: saved?.longueur || 10,
+          };
+        })
+      );
+    } catch (err) {
+      // No saved datamap, use defaults
+      console.warn("No existing datamap, using defaults", err);
+      setDatamap(
+        champs.map((champ) => ({
+          ...champ,
+          position: 0,
+          longueur: 10,
+        }))
+      );
+    }
+  }, [champs, codificationId]);
+
 
   const updateDatamapField = useCallback((idq: string, field: 'position' | 'longueur', value: number) => {
     setDatamap((prev) =>
@@ -64,7 +84,7 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
   };
 
 
-  const handleOpenDatamap = () => {
+  const handleOpenDatamap = async () => {
     if (!codificationId) {
       alert("Validez d'abord un dossier");
       return;
@@ -73,9 +93,10 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
       alert("Chargez d'abord les champs");
       return;
     }
-    loadDatamap();
+    await loadDatamap();
     setShowModal(true);
   };
+
 
   if (disabled) return null;
 
