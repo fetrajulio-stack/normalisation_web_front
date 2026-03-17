@@ -47,8 +47,9 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
       return;
     }
     if (datamap.some((f) => f.position === 0 || f.longueur === 0)) {
-      alert("Veuillez définir position et longueur pour tous les champs");
-      return;
+      if (!confirm("Certains champs ont position/longueur = 0. Enregistrer quand même ?")) {
+        return;
+      }
     }
     try {
       await api.post("/parametre/datamap", {
@@ -61,6 +62,7 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
       alert(`Erreur: ${err.response?.data?.message || "Échec de l'enregistrement"}`);
     }
   };
+
 
   const handleOpenDatamap = () => {
     if (!codificationId) {
@@ -166,12 +168,12 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
                 </button>
                 <button
                   onClick={handleSaveDatamap}
-                  disabled={datamap.some((f) => f.position === 0 || f.longueur === 0)}
-                  className="px-6 py-2.5 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 flex items-center gap-2"
                 >
                   <CheckCircle size={18} />
                   Enregistrer
                 </button>
+
               </div>
             </div>
           </div>
