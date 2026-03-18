@@ -361,6 +361,39 @@ const Parametrage = () => {
       return;
     }
 
+    // 🔥 NOUVEAU : contrôle si format TXT
+    if (exportFormat === "txt") {
+      try {
+        const res = await api.get("/parametre/datamap", {
+          params: { codification_id: codificationId }
+        });
+
+        const datamap = res.data.datamap || [];
+
+        // ❌ Aucun datamap
+        if (datamap.length === 0) {
+          alert("⚠️ Veuillez configurer le Datamap avant de générer un fichier TXT.");
+          return;
+        }
+
+        // ❌ Vérification contenu invalide
+        const invalid = datamap.some(
+          (d: any) => d.position <= 0 || d.longueur <= 0
+        );
+
+        if (invalid) {
+          alert("⚠️ Datamap invalide (position ou longueur incorrecte).");
+          return;
+        }
+
+      } catch (error) {
+        console.error("Erreur vérification Datamap", error);
+        alert("Erreur lors de la vérification du Datamap");
+        return;
+      }
+    }
+
+
     const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
     const codeDossierInfo = codeDossiers.find(
       (c) => c.id_code_dossier === selectedCodeDossier
@@ -411,8 +444,12 @@ const Parametrage = () => {
             /* =========================
             3️⃣ API normalisation
             ========================= */
-            setLoadingMessage("⏳ Normalisation et génération Excel...");
-
+           // setLoadingMessage("⏳ Normalisation et génération Excel...");
+            if (exportFormat === "excel") {
+              setLoadingMessage("⏳ Normalisation et génération Excel...");
+            } else {
+              setLoadingMessage("⏳ Normalisation et génération TXT...");
+            }
             axios.post(`${baseURL}normalisation/${codificationId}`, {}, {
               headers: {
                 Authorization: `Bearer ${token}`
@@ -420,7 +457,10 @@ const Parametrage = () => {
             })
               .then((res) => {
                 const filename = res.data.filename;
-                const url = `${baseURL}downloadexcel/${filename}`;
+                //const url = `${baseURL}downloadexcel/${filename}`;
+                const url = exportFormat === "excel"
+                  ? `${baseURL}downloadexcel/${filename}`
+                  : `${baseURL}downloadtxt/${filename}`;
                 const link = document.createElement('a');
                 link.href = url;
                 link.download = filename;
