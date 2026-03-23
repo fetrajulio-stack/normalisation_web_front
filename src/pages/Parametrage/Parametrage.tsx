@@ -57,7 +57,7 @@ interface DatamapField extends Champ {
   longueur: number;
 }
 
-const disableDatamap = true;
+const disableDatamap = false;
 
 const Parametrage = () => {
   // const { theme } = useThemeContext();
