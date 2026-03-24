@@ -54,11 +54,43 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
 
 
   const updateDatamapField = useCallback((idq: string, field: 'position' | 'longueur', value: number) => {
-    setDatamap((prev) =>
-      prev.map((f) =>
+    console.log("🔥 updateDatamapField called:", { idq, field, value });
+    
+    setDatamap((prev) => {
+      // D'abord, mettre à jour le champ modifié
+      const updated = prev.map((f) =>
         f.idq === idq ? { ...f, [field]: value } : f
-      )
-    );
+      );
+
+      console.log("📝 datamap updated:", { idq, field, value, updatedDatamap: updated });
+
+      // Ensuite, vérifier si on doit auto-calculer la Position du champ suivant
+      const currentIndex = updated.findIndex((f) => f.idq === idq);
+      const currentField = updated[currentIndex];
+      
+      console.log("🔍 Checking auto-calc conditions:", {
+        currentIndex,
+        currentField,
+        isValid: currentField.position > 0 && currentField.longueur > 0,
+        hasNext: currentIndex < updated.length - 1
+      });
+
+      // Auto-calcul si :
+      // 1. Ce n'est pas le dernier champ
+      // 2. Position ET Longueur du champ actuel sont valides (> 0)
+      if (currentIndex < updated.length - 1 && currentField.position > 0 && currentField.longueur > 0) {
+        const nextPosition = currentField.position + currentField.longueur;
+        console.log(`✅ Auto-calc triggered: Next position = ${currentField.position} + ${currentField.longueur} = ${nextPosition}`);
+        
+        // Toujours mettre à jour la Position du champ suivant
+        return updated.map((f, idx) =>
+          idx === currentIndex + 1 ? { ...f, position: nextPosition } : f
+        );
+      }
+
+      console.log("⏭️ No auto-calc needed");
+      return updated;
+    });
   }, []);
 
   const handleSaveDatamap = async () => {
@@ -143,21 +175,25 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
 
               {/* Content */}
               <div className="p-6 space-y-4">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+                  <strong>ℹ️ Automatisation activée:</strong> Quand vous changez la "Longueur", la "Position" du champ suivant se calcule automatiquement (Position actuelle + Longueur actuelle)
+                </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   Codification ID: {codificationId}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                  {datamap.map((field) => (
-                    <div key={field.idq} className="space-y-2 p-3 bg-gray-50 dark:bg-[#1f2a5a] rounded-lg">
+                  {datamap.map((field, index) => (
+                    <div key={field.idq} className="space-y-2 p-3 bg-gray-50 dark:bg-[#1f2a5a] rounded-lg border border-gray-200 dark:border-gray-600">
                       <label className="block text-sm font-medium text-gray-900 dark:text-white">
                         {field.idq}
+                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({index + 1}/{datamap.length})</span>
                       </label>
                       <div className="space-y-2">
                         <div>
                           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Position</label>
                           <input
                             type="number"
-                            min="1"
+                            min="0"
                             value={field.position}
                             onChange={(e) => updateDatamapField(field.idq, 'position', Number(e.target.value) || 0)}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0f173a] text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
@@ -167,7 +203,7 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
                           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Longueur</label>
                           <input
                             type="number"
-                            min="1"
+                            min="0"
                             value={field.longueur}
                             onChange={(e) => updateDatamapField(field.idq, 'longueur', Number(e.target.value) || 0)}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0f173a] text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
