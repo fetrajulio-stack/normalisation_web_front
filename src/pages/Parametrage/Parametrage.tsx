@@ -957,19 +957,6 @@ const Parametrage = () => {
           )}
 
 
-          <button
-            onClick={handleOpenDatamap}
-            disabled={disableDatamap}
-            className={`w-full py-6 rounded-lg text-white font-semibold flex items-center justify-center gap-2 transition ${disableDatamap
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-purple-600 hover:bg-purple-700"
-              }`}
-          >
-            📊
-            Datamap1
-          </button>
-
-
           {!disableDatamap && (
             <Datamap 
               champs={champs}
