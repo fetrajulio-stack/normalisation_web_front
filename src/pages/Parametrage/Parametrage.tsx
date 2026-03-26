@@ -893,7 +893,7 @@ const Parametrage = () => {
 
           {codificationId && (
             <button
-             /**   onClick={() => setShowUploadExcelModal(true)}*/
+                onClick={() => setShowUploadExcelModal(true)}
               className="w-full py-3 rounded-lg bg-[#3b82f6] text-white font-semibold hover:bg-[#2563eb] flex items-center justify-center gap-2 transition"
             >
             <Upload size={18} /> Importer Excel
@@ -933,11 +933,19 @@ const Parametrage = () => {
         </div>
       </div>
 
-      <UploadExcel
-        isOpen={showUploadExcelModal}
-        onClose={() => setShowUploadExcelModal(false)}
-        tableName="data_import"
-      />
+      {(() => {
+        const selectedCodeDossierInfo = codeDossiers.find((c) => c.id_code_dossier === selectedCodeDossier);
+        const selectedCodeDossierNameValue = selectedCodeDossierInfo?.code_dossier || "";
+        return (
+          <UploadExcel
+            isOpen={showUploadExcelModal}
+            onClose={() => setShowUploadExcelModal(false)}
+            tableName="data_import"
+            selectedCodeDossierName={selectedCodeDossierNameValue}
+            codification_id={codificationId ?? undefined}
+          />
+        );
+      })()}
     </div>
   );
 };

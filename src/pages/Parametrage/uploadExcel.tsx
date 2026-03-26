@@ -6,13 +6,16 @@ interface UploadExcelProps {
   isOpen: boolean;
   onClose: () => void;
   tableName: string;
+  selectedCodeDossierName?: string;
+  codification_id?: number;
 }
 
-const UploadExcel: React.FC<UploadExcelProps> = ({ isOpen, onClose, tableName }) => {
+const UploadExcel: React.FC<UploadExcelProps> = ({ isOpen, onClose, tableName, selectedCodeDossierName, codification_id }) => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [fileNameError, setFileNameError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -26,7 +29,20 @@ const UploadExcel: React.FC<UploadExcelProps> = ({ isOpen, onClose, tableName })
 
       if (!validTypes.includes(selectedFile.type)) {
         setError("Veuillez sélectionner un fichier Excel valide (.xlsx, .xls ou .csv)");
+        setFileNameError(null);
         return;
+      }
+
+      // Vérifier le nom du fichier par rapport au code dossier sélectionné
+      if (selectedCodeDossierName) {
+        const fileName = selectedFile.name.split(".")[0]; // Récupérer le nom sans extension
+        if (fileName !== selectedCodeDossierName) {
+          setFileNameError(`Nom de fichier incorrect. Attendu: ${selectedCodeDossierName}`);
+        } else {
+          setFileNameError(null);
+        }
+      } else {
+        setFileNameError(null);
       }
 
       setFile(selectedFile);
@@ -40,6 +56,12 @@ const UploadExcel: React.FC<UploadExcelProps> = ({ isOpen, onClose, tableName })
       return;
     }
 
+    // Vérifier qu'il n'y a pas d'erreur de nom de fichier
+    if (fileNameError) {
+      setError(fileNameError);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -49,6 +71,12 @@ const UploadExcel: React.FC<UploadExcelProps> = ({ isOpen, onClose, tableName })
       const formData = new FormData();
       formData.append("file", file);
       formData.append("tableName", tableName || "data_import");
+      if (selectedCodeDossierName) {
+        formData.append("codeDossierName", selectedCodeDossierName);
+      }
+      if (codification_id) {
+        formData.append("codification_id", codification_id.toString());
+      }
 
       // Envoyer le fichier au backend
       const response = await api.post("/excel/import", formData, {
@@ -78,6 +106,7 @@ const UploadExcel: React.FC<UploadExcelProps> = ({ isOpen, onClose, tableName })
     setFile(null);
     setError(null);
     setSuccess(false);
+    setFileNameError(null);
   };
 
   if (!isOpen) return null;
@@ -107,6 +136,12 @@ const UploadExcel: React.FC<UploadExcelProps> = ({ isOpen, onClose, tableName })
           {error && (
             <div className="p-4 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300">
               {error}
+            </div>
+          )}
+
+          {fileNameError && (
+            <div className="p-4 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300">
+              ⚠️ {fileNameError}
             </div>
           )}
 
@@ -163,7 +198,7 @@ const UploadExcel: React.FC<UploadExcelProps> = ({ isOpen, onClose, tableName })
           </button>
           <button
             onClick={handleUpload}
-            disabled={!file || loading}
+            disabled={!file || loading || !!fileNameError}
             className="px-6 py-2.5 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading ? (
