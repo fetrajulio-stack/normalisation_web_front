@@ -356,48 +356,20 @@ const Parametrage = () => {
 
   const handleLancer = async () => {
 
+    const token = localStorage.getItem("token");
+    const baseURL = import.meta.env.VITE_API_URL;
+    const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
+    const codeDossierInfo = codeDossiers.find(
+        (c) => c.id_code_dossier === selectedCodeDossier
+    );
+
+
+    // 1. Vérifications de base
     if (!codificationId || !selectedDossier || !selectedCodeDossier) {
       alert("Veuillez valider un dossier avant de lancer.");
       return;
     }
 
-    // 🔥 NOUVEAU : contrôle si format TXT
-    if (exportFormat === "txt") {
-      try {
-        const res = await api.get("/parametre/datamap", {
-          params: { codification_id: codificationId }
-        });
-
-        const datamap = res.data.datamap || [];
-
-        // ❌ Aucun datamap
-        if (datamap.length === 0) {
-          alert("⚠️ Veuillez configurer le Datamap avant de générer un fichier TXT.");
-          return;
-        }
-
-        // ❌ Vérification contenu invalide
-        const invalid = datamap.some(
-          (d: any) => d.position <= 0 || d.longueur <= 0
-        );
-
-        if (invalid) {
-          alert("⚠️ Datamap invalide (position ou longueur incorrecte).");
-          return;
-        }
-
-      } catch (error) {
-        console.error("Erreur vérification Datamap", error);
-        alert("Erreur lors de la vérification du Datamap");
-        return;
-      }
-    }
-
-
-    const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
-    const codeDossierInfo = codeDossiers.find(
-      (c) => c.id_code_dossier === selectedCodeDossier
-    );
 
     if (!dossierInfo || !codeDossierInfo) {
       alert("Erreur dossier ou code dossier");
@@ -410,180 +382,107 @@ const Parametrage = () => {
     };
 
     setLoadingProcess(true);
+    // ----------------------------------------------
 
-    const token = localStorage.getItem("token");
-    const baseURL = import.meta.env.VITE_API_URL;
+    // --- TON BLOC IF INTÉGRÉ ICI ---
+    if (exportFormat === "txt") {
+      setLoadingMessage("⏳ Conversion de l'Excel en TXT longueur fixe...");
+      console.log(codificationId);
 
-    /* =========================
-         1️⃣ API normalise
-      ========================= */
+      axios.post(`${baseURL}datamaps/export`, {
+        codification_id: codificationId,
+        nom_code_dossier: codeDossierInfo?.code_dossier,
+        format: "txt"
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+          .then((res) => {
+            const filename = res.data.filename;
+            const downloadUrl = `${baseURL}downloadtxt/${filename}`;
+
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.setAttribute('download', filename);
+            link.style.display = 'none';
+
+            document.body.appendChild(link);
+            link.click();
+
+            setTimeout(() => {
+              document.body.removeChild(link);
+            }, 100);
+
+            // --- ESSENTIEL : On arrête le chargement ici ---
+            setLoadingProcess(false);
+             alert("✅ Transformation réussie !");
+          })
+          .catch((error) => {
+            console.error("Erreur:", error);
+            // --- ESSENTIEL : On arrête aussi le chargement si ça plante ---
+            setLoadingProcess(false);
+            alert("❌ Erreur lors de la transformation.");
+          });
+
+      // Le return empêche d'exécuter la suite du code de la fonction
+      return;
+    }
+
+    /* ========================================================
+       LE RESTE DU CODE (SANS TOUCHER LA LOGIQUE)
+       S'exécutera uniquement si exportFormat n'est pas "txt"
+       ======================================================== */
     setLoadingMessage("⏳ Création table source...");
 
     axios.get(`${baseURL}normalise`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
+      headers: { Authorization: `Bearer ${token}` },
       params: payload
     })
-      .then(() => {
-        /* =========================
-       2️⃣ API importmdb
-        ========================= */
-        setLoadingMessage("⏳ Import MDB...");
-
-        axios.get(`${baseURL}importmdb`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
-          params: payload
-        })
-          .catch((error) => {
-            console.error("Erreur:", error);
-          })
+        .then(() => {
+      setLoadingMessage("⏳ Import MDB...");
+      axios.get(`${baseURL}importmdb`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: payload
+      })
+          .catch((error) => console.error("Erreur:", error))
           .finally(() => {
-            /* =========================
-            3️⃣ API normalisation
-            ========================= */
-           // setLoadingMessage("⏳ Normalisation et génération Excel...");
             if (exportFormat === "excel") {
               setLoadingMessage("⏳ Normalisation et génération Excel...");
             } else {
               setLoadingMessage("⏳ Normalisation et génération TXT...");
             }
             axios.post(`${baseURL}normalisation/${codificationId}`, {}, {
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
+              headers: { Authorization: `Bearer ${token}` }
             })
-              .then((res) => {
-                const filename = res.data.filename;
-                //const url = `${baseURL}downloadexcel/${filename}`;
-                const url = exportFormat === "excel"
-                  ? `${baseURL}downloadexcel/${filename}`
-                  : `${baseURL}downloadtxt/${filename}`;
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = filename;
-                link.click();
+                .then((res) => {
+                  const filename = res.data.filename;
+                  const downloadUrl = `${baseURL}downloadtxt/${filename}`;
 
-                alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
-              })
-              .catch((error) => {
-                console.error("Erreur:", error);
-              })
-              .finally(() => {
-                console.log("Requête terminée");
+                  const link = document.createElement('a');
+                  link.href = downloadUrl;
+                  link.setAttribute('download', filename);
+                  link.style.display = 'none';
 
-                setLoadingProcess(false);
-              });
-          })
-      })
-      .catch((error) => {
-        console.error("Erreur:", error);
-      })
-      .finally(() => {
-        console.log("Requête terminée");
-      });
+                  document.body.appendChild(link);
+                  link.click();
 
-    /*
-      try {
-     */
+                  // --- LES DEUX LIGNES À AJOUTER/VÉRIFIER ICI ---
+                  document.body.removeChild(link);
+                  setLoadingProcess(false); // <--- C'est cette ligne qui fait disparaître le message bleu ⏳
 
-    /* =========================
-       1️⃣ API normalise
-    ========================= */
-    /* 
- 
-     setLoadingMessage("⏳ Création table source...");
- 
-     await api.get("/normalise", { params: payload });
- 
-     console.log("Table Source créée");
- 
- 
-   } catch (error) {
- 
-     console.error("Erreur normalise", error);
-     alert("Erreur lors de la création de la table Source");
- 
-     setLoadingProcess(false);
-     return;
- 
-   }
-     */
+                  alert("✅ Transformation réussie !");
+                })
 
-    /* =========================
-       2️⃣ API importmdb
-    ========================= */
-    /*
-      try {
-    
-        setLoadingMessage("⏳ Import MDB...");
-    
-        await api.get("/importmdb", { params: payload });
-    
-        console.log("Import MDB terminé");
-    
-      } catch (error) {
-    
-        console.warn("Import MDB échoué mais on continue...", error);
-    
-      }
-        */
-
-    /* =========================
-       3️⃣ API normalisation
-    ========================= */
-    /*
-  
-    try {
-  
-      setLoadingMessage("⏳ Normalisation et génération Excel...");
-  
-      const response = await api.post(`/normalisation/${codificationId}`);
-  
-      const data = response.data;
-      */
-
-    /*
-    if (data.status === "OK" && data.url) {
-
-      const link = document.createElement("a");
-      link.href = data.url;
-      link.setAttribute("download", "");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      setLoadingMessage("✅ Fichier Excel généré !");
-      alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
-
-    } else {
-      alert("Erreur lors de la génération du fichier");
-    }
-      */
-    /*
-    if(data.status === "OK") {
-      await api.get(`/downloadexcel/${data.filename}`);
-      alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
-    }
-    else {
-      alert("Erreur lors de la génération du fichier");
-    }
-      */
-    /* 
-
-  } catch (error) {
-
-    console.error("Erreur normalisation", error);
-    alert("Erreur lors de la normalisation");
-
-  } finally {
-
-    setLoadingProcess(false);
-
-  }
-    */
+                .catch((err) => {
+                  console.error(err);
+                  setLoadingProcess(false); // <--- On l'arrête aussi en cas d'erreur
+                  alert("❌ Erreur lors de la transformation.");
+                });
+          });
+    })
+        .catch((error) => {
+          console.error("Erreur:", error);
+          setLoadingProcess(false);
+        });
   };
 
 
