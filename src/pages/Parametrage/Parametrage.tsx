@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import PageHeader from "../../components/PageHeader";
 import Datamap from "./Datamap";
-import { CheckCircle, Download } from "lucide-react";
+import UploadExcel from "./uploadExcel";
+import { CheckCircle, Download, Upload } from "lucide-react";
 import api from "../../services/api";
 import useAuth from "../../context/AuthContext";
 import { PROFIL_CQ, PROFIL_ETUDES } from "../../constants/Constant";
@@ -57,6 +58,10 @@ interface PayloadConsignes {
 const disableDatamap = false;
 
 
+
+
+
+
 const Parametrage = () => {
   // const { theme } = useThemeContext();
 
@@ -88,6 +93,8 @@ const Parametrage = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   // identifiant de la codification récupéré via nom/code dossier
   const [codificationId, setCodificationId] = useState<number | null>(null);
+
+  const [showUploadExcelModal, setShowUploadExcelModal] = useState(false);
 
 
   useEffect(() => {
@@ -131,6 +138,8 @@ const Parametrage = () => {
     const dossier = dossiers.find((d) => d.id_dossier === selectedDossier);
     setCodeDossiers(dossier?.cathegories ?? []);
   }, [selectedDossier]);
+
+
 
   const handleValidateDossier = async () => {
 
@@ -780,11 +789,22 @@ const Parametrage = () => {
           >
             <Download size={20} /> Lancer
           </button>
+
+          {codificationId && (
+            <button
+                onClick={() => setShowUploadExcelModal(true)}
+              className="w-full py-3 rounded-lg bg-[#3b82f6] text-white font-semibold hover:bg-[#2563eb] flex items-center justify-center gap-2 transition"
+            >
+            <Upload size={18} /> Importer Excel
+            </button>
+          )}
+
           {loadingProcess && (
             <div className="w-full mb-4 p-4 rounded-lg bg-blue-100 text-blue-800 text-center font-semibold animate-pulse">
               {loadingMessage}
             </div>
           )}
+
 
           {!disableDatamap && (
             <Datamap 
@@ -794,6 +814,7 @@ const Parametrage = () => {
               disabled={!codificationId || isEtudes}
             />
           )}
+
 
           <div className="w-full mt-4">
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -810,6 +831,20 @@ const Parametrage = () => {
           </div>
         </div>
       </div>
+
+      {(() => {
+        const selectedCodeDossierInfo = codeDossiers.find((c) => c.id_code_dossier === selectedCodeDossier);
+        const selectedCodeDossierNameValue = selectedCodeDossierInfo?.code_dossier || "";
+        return (
+          <UploadExcel
+            isOpen={showUploadExcelModal}
+            onClose={() => setShowUploadExcelModal(false)}
+            tableName="data_import"
+            selectedCodeDossierName={selectedCodeDossierNameValue}
+            codification_id={codificationId ?? undefined}
+          />
+        );
+      })()}
     </div>
   );
 };
