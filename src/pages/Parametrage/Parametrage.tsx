@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import PageHeader from "../../components/PageHeader";
 import Datamap from "./Datamap";
 import UploadExcel from "./uploadExcel";
-import { CheckCircle, Download, Upload } from "lucide-react";
+import SelectLotsModal from "./SelectLotsModal";
+import { Download, Upload, CheckCircle } from "lucide-react";
 import api from "../../services/api";
 import useAuth from "../../context/AuthContext";
 import { PROFIL_CQ, PROFIL_ETUDES } from "../../constants/Constant";
@@ -66,7 +67,6 @@ const Parametrage = () => {
   // const { theme } = useThemeContext();
 
   const { user } = useAuth();
-  const profil = user?.profil?.libelle;
 
   const [loadingProcess, setLoadingProcess] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
@@ -95,6 +95,8 @@ const Parametrage = () => {
   const [codificationId, setCodificationId] = useState<number | null>(null);
 
   const [showUploadExcelModal, setShowUploadExcelModal] = useState(false);
+  const [showSelectLotsModal, setShowSelectLotsModal] = useState(false);
+  const [selectedLots, setSelectedLots] = useState<string[]>([]);
 
 
   useEffect(() => {
@@ -402,6 +404,13 @@ const Parametrage = () => {
       }
     }
 
+    // Afficher le modal de sélection des lots
+    setShowSelectLotsModal(true);
+  };
+
+  // Nouvelle fonction pour traiter la sélection des lots
+  const handleLotsSelected = async (lotsToProcess: string[]) => {
+    setSelectedLots(lotsToProcess);
 
     const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
     const codeDossierInfo = codeDossiers.find(
@@ -416,6 +425,7 @@ const Parametrage = () => {
     const payload = {
       nom_dossier: dossierInfo.nom_dossier,
       nom_code_dossier: codeDossierInfo.code_dossier,
+      selected_lots: lotsToProcess, // Ajouter la liste des lots sélectionnés
     };
 
     setLoadingProcess(true);
@@ -436,7 +446,7 @@ const Parametrage = () => {
     })
       .then(() => {
         /* =========================
-       2️⃣ API importmdb
+       2️⃣ API importmdb (avec les lots sélectionnés)
         ========================= */
         setLoadingMessage("⏳ Import MDB...");
 
@@ -453,7 +463,6 @@ const Parametrage = () => {
             /* =========================
             3️⃣ API normalisation
             ========================= */
-           // setLoadingMessage("⏳ Normalisation et génération Excel...");
             if (exportFormat === "excel") {
               setLoadingMessage("⏳ Normalisation et génération Excel...");
             } else {
@@ -466,7 +475,6 @@ const Parametrage = () => {
             })
               .then((res) => {
                 const filename = res.data.filename;
-                //const url = `${baseURL}downloadexcel/${filename}`;
                 const url = exportFormat === "excel"
                   ? `${baseURL}downloadexcel/${filename}`
                   : `${baseURL}downloadtxt/${filename}`;
@@ -475,7 +483,7 @@ const Parametrage = () => {
                 link.download = filename;
                 link.click();
 
-                alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
+                alert("✅ Le fichier a été généré et téléchargé avec succès.");
               })
               .catch((error) => {
                 console.error("Erreur:", error);
@@ -489,56 +497,12 @@ const Parametrage = () => {
       })
       .catch((error) => {
         console.error("Erreur:", error);
+        setLoadingProcess(false);
       })
       .finally(() => {
         console.log("Requête terminée");
       });
-
-    /*
-      try {
-     */
-
-    /* =========================
-       1️⃣ API normalise
-    ========================= */
-    /* 
- 
-     setLoadingMessage("⏳ Création table source...");
- 
-     await api.get("/normalise", { params: payload });
- 
-     console.log("Table Source créée");
- 
- 
-   } catch (error) {
- 
-     console.error("Erreur normalise", error);
-     alert("Erreur lors de la création de la table Source");
- 
-     setLoadingProcess(false);
-     return;
- 
-   }
-     */
-
-    /* =========================
-       2️⃣ API importmdb
-    ========================= */
-    /*
-      try {
-    
-        setLoadingMessage("⏳ Import MDB...");
-    
-        await api.get("/importmdb", { params: payload });
-    
-        console.log("Import MDB terminé");
-    
-      } catch (error) {
-    
-        console.warn("Import MDB échoué mais on continue...", error);
-    
-      }
-        */
+    };
 
     /* =========================
        3️⃣ API normalisation
@@ -593,11 +557,9 @@ const Parametrage = () => {
 
   }
     */
-  };
 
-
-  const isEtudes = profil === PROFIL_ETUDES;
-  const isCQ = profil === PROFIL_CQ;
+  const isEtudes = user?.profil?.libelle === PROFIL_ETUDES;
+  const isCQ = user?.profil?.libelle === PROFIL_CQ;
   const loadingCodes = false;
 
   return (
@@ -943,6 +905,22 @@ const Parametrage = () => {
             tableName="data_import"
             selectedCodeDossierName={selectedCodeDossierNameValue}
             codification_id={codificationId ?? undefined}
+          />
+        );
+      })()}
+
+      {(() => {
+        const selectedDossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
+        const selectedCodeDossierInfo = codeDossiers.find((c) => c.id_code_dossier === selectedCodeDossier);
+        const nomDossierValue = selectedDossierInfo?.nom_dossier || "";
+        const nomCodeDossierValue = selectedCodeDossierInfo?.code_dossier || "";
+        return (
+          <SelectLotsModal
+            isOpen={showSelectLotsModal}
+            onClose={() => setShowSelectLotsModal(false)}
+            nomDossier={nomDossierValue}
+            nomCodeDossier={nomCodeDossierValue}
+            onConfirm={handleLotsSelected}
           />
         );
       })()}
