@@ -44,6 +44,10 @@ interface ConsigneGroupes {
   groupes: Groupe[];
   parametres: {
     valeur_defaut: string;
+    mapping?: {
+      source: string;
+      target: string;
+    };
   };
 }
 
@@ -97,7 +101,7 @@ const Parametrage = () => {
   const [showUploadExcelModal, setShowUploadExcelModal] = useState(false);
   const [showSelectLotsModal, setShowSelectLotsModal] = useState(false);
   const [selectedLots, setSelectedLots] = useState<string[]>([]);
-
+const [mappingConsigneId, setMappingConsigneId] = useState<number | null>(null);
 
   useEffect(() => {
 
@@ -467,7 +471,7 @@ const Parametrage = () => {
     /* =========================
          1´©ÅÔâú API normalise
       ========================= */
-    setLoadingMessage("ÔÅ│ Cr├®ation table source...");
+    setLoadingMessage("⏳ Création table source...");
 
     axios.get(`${baseURL}normalise`, {
       headers: {
@@ -479,7 +483,7 @@ const Parametrage = () => {
         /* =========================
        2´©ÅÔâú API importmdb (avec les lots s├®lectionn├®s)
         ========================= */
-        setLoadingMessage("ÔÅ│ Import MDB...");
+        setLoadingMessage("⏳ Import MDB...");
 
         axios.get(`${baseURL}importmdb`, {
           headers: {
@@ -495,9 +499,9 @@ const Parametrage = () => {
             3´©ÅÔâú API normalisation
             ========================= */
             if (exportFormat === "excel") {
-              setLoadingMessage("ÔÅ│ Normalisation et g├®n├®ration Excel...");
+                setLoadingMessage("⏳ Normalisation et génération Excel...");
             } else {
-              setLoadingMessage("ÔÅ│ Normalisation et g├®n├®ration TXT...");
+              setLoadingMessage("⏳ Normalisation et génération TXT...");
             }
             axios.post(`${baseURL}normalisation/${codificationId}`, {}, {
               headers: {
@@ -514,13 +518,13 @@ const Parametrage = () => {
                 link.download = filename;
                 link.click();
 
-                alert("Ô£à Le fichier a ├®t├® g├®n├®r├® et t├®l├®charg├® avec succ├¿s.");
+                alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
               })
               .catch((error) => {
                 console.error("Erreur:", error);
               })
               .finally(() => {
-                console.log("Requ├¬te termin├®e");
+                console.log("Requête termine");
 
                 setLoadingProcess(false);
               });
@@ -531,7 +535,7 @@ const Parametrage = () => {
         setLoadingProcess(false);
       })
       .finally(() => {
-        console.log("Requ├¬te termin├®e");
+          console.log("Requête terminée");
       });
   };
 
@@ -840,7 +844,7 @@ const Parametrage = () => {
             <div className="flex items-center justify-end pt-4 border-t border-gray-300 dark:border-gray-600 gap-4">
               {editingId && (
                 <div className="mr-auto text-sm text-gray-600 dark:text-gray-300">
-                  Param├®trage charg├®: ID {editingId}
+                  Paramétrage chargé: ID {editingId}
                 </div>
               )}
 
