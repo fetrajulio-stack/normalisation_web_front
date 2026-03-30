@@ -358,7 +358,7 @@ const [mappingConsigneId, setMappingConsigneId] = useState<number | null>(null);
         const response = await api.post("/consigne/parametrage/add", payload);
         console.log("R├®ponse du serveur (add):", response.data);
       }
-      alert(editingId ? "Modifi├® avec succ├¿s !" : "Enregistr├® avec succ├¿s !");
+      alert(editingId ? "Modifié avec succés !" : "Enregistré avec succés !");
       setConsignesGroupes([]);
       setEditingId(null);
       setCodificationId(null);
