@@ -438,7 +438,7 @@ const [mappingConsigneId, setMappingConsigneId] = useState<number | null>(null);
       // Le return empêche d'exécuter la suite du code de la fonction
       return;
     }
-
+ setLoadingProcess(false);
     // Afficher le modal de s├®lection des lots
     setShowSelectLotsModal(true);
   };
