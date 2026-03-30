@@ -792,7 +792,7 @@ const [mappingConsigneId, setMappingConsigneId] = useState<number | null>(null);
                       {/* Ajouter groupe */}
                       <div className="mt-3 p-3 bg-blue-50 dark:bg-[#374151] rounded space-y-2">
                         <label className="block text-sm font-medium text-gray-900 dark:text-white">
-                          S├®lectionner champs pour nouveau groupe
+                          Sélectionner champs pour nouveau groupe
                         </label>
                         <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-[#0f173a]">
                           {champs.map((champ) => (
