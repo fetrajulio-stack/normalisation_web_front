@@ -43,7 +43,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
 
       const lotsList = response.data?.lots || [];
       setLots(lotsList);
-      // Sélectionner tous les lots par défaut
+      // S├®lectionner tous les lots par d├®faut
       setSelectedLots(lotsList);
     } catch (err: any) {
       const errorMsg =
@@ -71,7 +71,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
 
   const handleConfirm = () => {
     if (selectedLots.length === 0) {
-      setError("Veuillez sélectionner au moins un lot");
+      setError("Veuillez s├®lectionner au moins un lot");
       return;
     }
     onConfirm(selectedLots);
@@ -92,7 +92,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-[#0f173a]">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Sélectionner les lots
+            S├®lectionner les lots
           </h2>
           <button
             onClick={handleClose}
@@ -119,7 +119,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
             </div>
           ) : lots.length === 0 ? (
             <div className="p-4 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300">
-              ⚠️ Aucun lot trouvé pour ce code dossier
+              ÔÜá´©Å Aucun lot trouv├® pour ce code dossier
             </div>
           ) : (
             <>
@@ -136,7 +136,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
                   htmlFor="selectAll"
                   className="flex-1 cursor-pointer font-semibold text-gray-800 dark:text-gray-100"
                 >
-                  Sélectionner tous ({lots.length} lots)
+                  S├®lectionner tous ({lots.length} lots)
                 </label>
               </div>
 
@@ -170,7 +170,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
               {/* Info */}
               <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>ℹ️ Info :</strong> Vous avez sélectionné {selectedLots.length} lot(s)
+                  <strong>Ôä╣´©Å Info :</strong> Vous avez s├®lectionn├® {selectedLots.length} lot(s)
                 </p>
               </div>
             </>

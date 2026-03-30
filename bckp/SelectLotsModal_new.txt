@@ -1,0 +1,187 @@
+// src/components/normalisation/SelectLotsModal.tsx (ou dans le dossier de votre choix)
+import React, { useState, useEffect } from 'react';
+import { X, CheckCircle, Play } from 'lucide-react';
+import api from '../../services/api';
+
+interface Lot {
+  name: string;
+  path: string;
+}
+
+interface SelectLotsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onLaunch: (selectedLots: string[], codificationId: number) => void;
+  codificationId: number | null;
+}
+
+export const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
+  isOpen,
+  onClose,
+  onLaunch,
+  codificationId
+}) => {
+  const [lots, setLots] = useState<Lot[]>([]);
+  const [selectedLots, setSelectedLots] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchingLots, setFetchingLots] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Fetch des lots depuis l'API Laravel
+  const fetchLots = async () => {
+    if (!isOpen) return;
+    
+    setFetchingLots(true);
+    try {
+      const response = await api.get('/normalisation/lots'); // Route Laravel: /lots
+      setLots(response.data);
+    } catch (error) {
+      console.error('Erreur lors du fetch des lots:', error);
+      alert('Erreur lors du chargement des lots');
+    } finally {
+      setFetchingLots(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchLots();
+    }
+  }, [isOpen]);
+
+  const toggleLotSelection = (lotName: string) => {
+    setSelectedLots(prev => 
+      prev.includes(lotName)
+        ? prev.filter(name => name !== lotName)
+        : [...prev, lotName]
+    );
+  };
+
+  const handleLaunch = () => {
+    if (selectedLots.length === 0) {
+      alert('Veuillez sélectionner au moins un lot');
+      return;
+    }
+    
+    if (!codificationId) {
+      alert('Codification ID manquant');
+      return;
+    }
+
+    onLaunch(selectedLots, codificationId);
+    onClose();
+  };
+
+  const filteredLots = lots.filter(lot =>
+    lot.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#0f173a] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Sélectionner les lots à normaliser
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mt-1">
+              {selectedLots.length} lot(s) sélectionné(s)
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+          >
+            <X size={24} className="text-gray-500" />
+          </button>
+        </div>
+
+        {/* Contenu */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Barre de recherche */}
+          <div className="p-6 border-b border-gray-200 dark:border-gray-600">
+            <input
+              type="text"
+              placeholder="Rechercher un lot..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1f2a5a] text-gray-900 dark:text-white px-4 py-3 focus:ring-2 focus:ring-[#FC8404] outline-none"
+            />
+          </div>
+
+          {/* Liste des lots */}
+          <div className="flex-1 p-6 overflow-y-auto">
+            {fetchingLots ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FC8404]"></div>
+                <span className="ml-3 text-gray-600 dark:text-gray-300">Chargement des lots...</span>
+              </div>
+            ) : filteredLots.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
+                  <div className="text-gray-400 text-2xl">📁</div>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Aucun lot trouvé
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {searchTerm ? `Aucun lot ne correspond à "${searchTerm}"` : 'Aucun lot disponible'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredLots.map((lot) => (
+                  <label
+                    key={lot.path}
+                    className="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-[#1f2a5a] rounded-xl cursor-pointer transition group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedLots.includes(lot.name)}
+                      onChange={() => toggleLotSelection(lot.name)}
+                      className="w-5 h-5 text-[#FC8404] bg-gray-100 border-gray-300 rounded focus:ring-[#FC8404] cursor-pointer"
+                    />
+                    <div className="ml-4 flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 dark:text-white truncate group-hover:text-[#FC8404] transition">
+                        {lot.name}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        {lot.path}
+                      </div>
+                    </div>
+                    {selectedLots.includes(lot.name) && (
+                      <CheckCircle size={20} className="text-green-500 ml-2" />
+                    )}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#1f2a5a] rounded-b-2xl">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleLaunch}
+              disabled={selectedLots.length === 0 || loading || !codificationId}
+              className="px-8 py-2.5 rounded-lg bg-[#10b981] text-white font-semibold hover:bg-[#0f9d75] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition shadow-lg"
+            >
+              <Play size={18} />
+              Lancer normaliser ({selectedLots.length})
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

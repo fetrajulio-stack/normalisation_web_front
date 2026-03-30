@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import PageHeader from "../../components/PageHeader";
 import Datamap from "./Datamap";
 import UploadExcel from "./uploadExcel";
-import SelectLotsModal from "./SelectLotsModal";
-import { Download, Upload, CheckCircle } from "lucide-react";
+import { CheckCircle, Download, Upload } from "lucide-react";
 import api from "../../services/api";
 import useAuth from "../../context/AuthContext";
 import { PROFIL_CQ, PROFIL_ETUDES } from "../../constants/Constant";
@@ -50,7 +49,7 @@ interface ConsigneGroupes {
 interface PayloadConsignes {
   nom_dossier: string;
   nom_code_dossier: string;
-  // identifiant correspondant ├á la table codifications c├┤t├® backend
+  // identifiant correspondant à la table codifications côté backend
   //id_codification?: number;
   codification_id?: number;
   consignes: ConsigneGroupes[];
@@ -67,6 +66,7 @@ const Parametrage = () => {
   // const { theme } = useThemeContext();
 
   const { user } = useAuth();
+  const profil = user?.profil?.libelle;
 
   const [loadingProcess, setLoadingProcess] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
@@ -86,17 +86,15 @@ const Parametrage = () => {
   // const [selectedConsignes, setSelectedConsignes] = useState<Consigne[]>({});
   const [exportFormat, setExportFormat] = useState<"excel" | "txt">("excel");
 
-  // ├ëtat pour les consignes avec groupes
+  // État pour les consignes avec groupes
   const [consignesGroupes, setConsignesGroupes] = useState<ConsigneGroupes[]>([]);
   const [selectedConsigneId, setSelectedConsigneId] = useState<number | "">("");
   const [selectedGroupChamps, setSelectedGroupChamps] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  // identifiant de la codification r├®cup├®r├® via nom/code dossier
+  // identifiant de la codification récupéré via nom/code dossier
   const [codificationId, setCodificationId] = useState<number | null>(null);
 
   const [showUploadExcelModal, setShowUploadExcelModal] = useState(false);
-  const [showSelectLotsModal, setShowSelectLotsModal] = useState(false);
-  const [selectedLots, setSelectedLots] = useState<string[]>([]);
 
 
   useEffect(() => {
@@ -146,7 +144,7 @@ const Parametrage = () => {
   const handleValidateDossier = async () => {
 
     if (!selectedDossier || !selectedCodeDossier) {
-      alert("Veuillez s├®lectionner un dossier et un code dossier");
+      alert("Veuillez sélectionner un dossier et un code dossier");
       return;
     }
 
@@ -166,7 +164,7 @@ const Parametrage = () => {
       });
       setChamps(res.data);
 
-      // r├®cup├®rer id de codification ├á partir du nom et code dossier
+      // récupérer id de codification à partir du nom et code dossier
       let codifId: number | null = null;
       try {
         console.debug("lookup codification with", {
@@ -181,10 +179,10 @@ const Parametrage = () => {
         });
         codifId = codifRes.data?.id ?? null;
       } catch (e) {
-        console.error("Erreur lors de la r├®cup├®ration de l'id de codification", e);
+        console.error("Erreur lors de la récupération de l'id de codification", e);
       }
       if (!codifId) {
-        //alert("Impossible de trouver la codification associ├®e");
+        //alert("Impossible de trouver la codification associée");
         setConsignesGroupes([]);
         setEditingId(null);
         return;
@@ -192,7 +190,7 @@ const Parametrage = () => {
       console.debug("codificationId fetched", codifId);
       setCodificationId(codifId);
 
-      // V├®rifier s'il existe d├®j├á un parametrage pour cette codification
+      // Vérifier s'il existe déjà un parametrage pour cette codification
       try {
         const resp = await api.get(`/consigne/parametrage/${codifId}`);
         const data = resp.data;
@@ -208,7 +206,7 @@ const Parametrage = () => {
           setEditingId(null);
         }
       } catch (err) {
-        // Pas de param├®trage existant ou erreur non bloquante
+        // Pas de paramétrage existant ou erreur non bloquante
         setConsignesGroupes([]);
         setEditingId(null);
       }
@@ -236,13 +234,13 @@ const Parametrage = () => {
 
   const handleAddConsigne = () => {
     if (!selectedConsigneId) {
-      alert("S├®lectionnez d'abord une consigne");
+      alert("Sélectionnez d'abord une consigne");
       return;
     }
 
-    // V├®rifier si la consigne existe d├®j├á
+    // Vérifier si la consigne existe déjà
     if (consignesGroupes.some((c) => c.consigne_id === selectedConsigneId)) {
-      alert("Cette consigne est d├®j├á ajout├®e");
+      alert("Cette consigne est déjà ajoutée");
       return;
     }
 
@@ -311,7 +309,7 @@ const Parametrage = () => {
 
   const handleSaveChamps = async () => {
     if (!selectedDossier || !selectedCodeDossier) {
-      alert("Veuillez s├®lectionner un dossier et un code dossier");
+      alert("Veuillez sélectionner un dossier et un code dossier");
       return;
     }
 
@@ -320,14 +318,14 @@ const Parametrage = () => {
       return;
     }
 
-    // R├®cup├®rer les noms des dossier et code dossier
+    // Récupérer les noms des dossier et code dossier
     const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
     const codeDossierInfo = codeDossiers.find(
       (c) => c.id_code_dossier === selectedCodeDossier
     );
 
     if (!dossierInfo || !codeDossierInfo) {
-      alert("Erreur: dossier ou code dossier non trouv├®");
+      alert("Erreur: dossier ou code dossier non trouvé");
       return;
     }
 
@@ -339,7 +337,7 @@ const Parametrage = () => {
       consignes: consignesGroupes,
     };
 
-    console.log("Payload ├á envoyer:", JSON.stringify(payload, null, 2));
+    console.log("Payload à envoyer:", JSON.stringify(payload, null, 2));
 
     try {
       if (editingId) {
@@ -349,99 +347,61 @@ const Parametrage = () => {
           }
         }
         );
-        console.log("R├®ponse du serveur (update):", response.data);
+        console.log("Réponse du serveur (update):", response.data);
       } else {
         const response = await api.post("/consigne/parametrage/add", payload);
-        console.log("R├®ponse du serveur (add):", response.data);
+        console.log("Réponse du serveur (add):", response.data);
       }
-      alert(editingId ? "Modifi├® avec succ├¿s !" : "Enregistr├® avec succ├¿s !");
+      alert(editingId ? "Modifié avec succès !" : "Enregistré avec succès !");
       setConsignesGroupes([]);
       setEditingId(null);
       setCodificationId(null);
     } catch (err: any) {
-      console.error("Erreur d├®taill├®e:", err);
+      console.error("Erreur détaillée:", err);
       const errorMessage = err?.response?.data?.message || err?.message || "Erreur inconnue";
       alert(`Erreur lors de l'enregistrement:\n${errorMessage}`);
     }
   };
 
   const handleLancer = async () => {
-    const token = localStorage.getItem("token");
-    const baseURL = import.meta.env.VITE_API_URL;
-    const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
-    const codeDossierInfo = codeDossiers.find(
-      (c) => c.id_code_dossier === selectedCodeDossier
-    );
 
     if (!codificationId || !selectedDossier || !selectedCodeDossier) {
       alert("Veuillez valider un dossier avant de lancer.");
       return;
     }
 
-    if (!dossierInfo || !codeDossierInfo) {
-      alert("Erreur dossier ou code dossier");
-      return;
-    }
-
-    const payload = {
-      nom_dossier: dossierInfo.nom_dossier,
-      nom_code_dossier: codeDossierInfo.code_dossier,
-    };
-
-    setLoadingProcess(true);
-  // ----------------------------------------------
-
- // --- TON BLOC IF INTÉGRÉ ICI ---
+    // 🔥 NOUVEAU : contrôle si format TXT
     if (exportFormat === "txt") {
-
-      setLoadingMessage("La conversion de l'Excel en TXT longueur fixe...");
-      console.log(codificationId);
-
-      axios.post(`${baseURL}datamaps/export`, {
-        codification_id: codificationId,
-        nom_code_dossier: codeDossierInfo?.code_dossier,
-        format: "txt"
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then((res) => {
-          const filename = res.data.filename;
-          const downloadUrl = `${baseURL}downloadtxt/${filename}`;
-
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.setAttribute('download', filename);
-          link.style.display = 'none';
-
-          document.body.appendChild(link);
-          link.click();
-
-          setTimeout(() => {
-            document.body.removeChild(link);
-          }, 100);
-
-         // --- ESSENTIEL : On arrête le chargement ici ---
-          setLoadingProcess(false);
-            alert("✅ Transformation réussie !");
-        })
-        .catch((error) => {
-          console.error("Erreur:", error);
-           // --- ESSENTIEL : On arrête aussi le chargement si ça plante ---
-          setLoadingProcess(false);
- 		alert("❌ Erreur lors de la transformation.");
+      try {
+        const res = await api.get("/parametre/datamap", {
+          params: { codification_id: codificationId }
         });
 
-      // Le return empêche d'exécuter la suite du code de la fonction
-      return;
+        const datamap = res.data.datamap || [];
+
+        // ❌ Aucun datamap
+        if (datamap.length === 0) {
+          alert("⚠️ Veuillez configurer le Datamap avant de générer un fichier TXT.");
+          return;
+        }
+
+        // ❌ Vérification contenu invalide
+        const invalid = datamap.some(
+          (d: any) => d.position <= 0 || d.longueur <= 0
+        );
+
+        if (invalid) {
+          alert("⚠️ Datamap invalide (position ou longueur incorrecte).");
+          return;
+        }
+
+      } catch (error) {
+        console.error("Erreur vérification Datamap", error);
+        alert("Erreur lors de la vérification du Datamap");
+        return;
+      }
     }
 
-    // Afficher le modal de s├®lection des lots
-    setShowSelectLotsModal(true);
-  };
-
-  // Nouvelle fonction pour traiter la s├®lection des lots
-  const handleLotsSelected = async (lotsToProcess: string[]) => {
-    setSelectedLots(lotsToProcess);
 
     const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
     const codeDossierInfo = codeDossiers.find(
@@ -456,7 +416,6 @@ const Parametrage = () => {
     const payload = {
       nom_dossier: dossierInfo.nom_dossier,
       nom_code_dossier: codeDossierInfo.code_dossier,
-      selected_lots: lotsToProcess, // Ajouter la liste des lots s├®lectionn├®s
     };
 
     setLoadingProcess(true);
@@ -465,9 +424,9 @@ const Parametrage = () => {
     const baseURL = import.meta.env.VITE_API_URL;
 
     /* =========================
-         1´©ÅÔâú API normalise
+         1️⃣ API normalise
       ========================= */
-    setLoadingMessage("ÔÅ│ Cr├®ation table source...");
+    setLoadingMessage("⏳ Création table source...");
 
     axios.get(`${baseURL}normalise`, {
       headers: {
@@ -477,9 +436,9 @@ const Parametrage = () => {
     })
       .then(() => {
         /* =========================
-       2´©ÅÔâú API importmdb (avec les lots s├®lectionn├®s)
+       2️⃣ API importmdb
         ========================= */
-        setLoadingMessage("ÔÅ│ Import MDB...");
+        setLoadingMessage("⏳ Import MDB...");
 
         axios.get(`${baseURL}importmdb`, {
           headers: {
@@ -492,12 +451,13 @@ const Parametrage = () => {
           })
           .finally(() => {
             /* =========================
-            3´©ÅÔâú API normalisation
+            3️⃣ API normalisation
             ========================= */
+           // setLoadingMessage("⏳ Normalisation et génération Excel...");
             if (exportFormat === "excel") {
-              setLoadingMessage("ÔÅ│ Normalisation et g├®n├®ration Excel...");
+              setLoadingMessage("⏳ Normalisation et génération Excel...");
             } else {
-              setLoadingMessage("ÔÅ│ Normalisation et g├®n├®ration TXT...");
+              setLoadingMessage("⏳ Normalisation et génération TXT...");
             }
             axios.post(`${baseURL}normalisation/${codificationId}`, {}, {
               headers: {
@@ -506,6 +466,7 @@ const Parametrage = () => {
             })
               .then((res) => {
                 const filename = res.data.filename;
+                //const url = `${baseURL}downloadexcel/${filename}`;
                 const url = exportFormat === "excel"
                   ? `${baseURL}downloadexcel/${filename}`
                   : `${baseURL}downloadtxt/${filename}`;
@@ -514,13 +475,13 @@ const Parametrage = () => {
                 link.download = filename;
                 link.click();
 
-                alert("Ô£à Le fichier a ├®t├® g├®n├®r├® et t├®l├®charg├® avec succ├¿s.");
+                alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
               })
               .catch((error) => {
                 console.error("Erreur:", error);
               })
               .finally(() => {
-                console.log("Requ├¬te termin├®e");
+                console.log("Requête terminée");
 
                 setLoadingProcess(false);
               });
@@ -528,69 +489,115 @@ const Parametrage = () => {
       })
       .catch((error) => {
         console.error("Erreur:", error);
-        setLoadingProcess(false);
       })
       .finally(() => {
-        console.log("Requ├¬te termin├®e");
+        console.log("Requête terminée");
       });
+
+    /*
+      try {
+     */
+
+    /* =========================
+       1️⃣ API normalise
+    ========================= */
+    /* 
+ 
+     setLoadingMessage("⏳ Création table source...");
+ 
+     await api.get("/normalise", { params: payload });
+ 
+     console.log("Table Source créée");
+ 
+ 
+   } catch (error) {
+ 
+     console.error("Erreur normalise", error);
+     alert("Erreur lors de la création de la table Source");
+ 
+     setLoadingProcess(false);
+     return;
+ 
+   }
+     */
+
+    /* =========================
+       2️⃣ API importmdb
+    ========================= */
+    /*
+      try {
+    
+        setLoadingMessage("⏳ Import MDB...");
+    
+        await api.get("/importmdb", { params: payload });
+    
+        console.log("Import MDB terminé");
+    
+      } catch (error) {
+    
+        console.warn("Import MDB échoué mais on continue...", error);
+    
+      }
+        */
+
+    /* =========================
+       3️⃣ API normalisation
+    ========================= */
+    /*
+  
+    try {
+  
+      setLoadingMessage("⏳ Normalisation et génération Excel...");
+  
+      const response = await api.post(`/normalisation/${codificationId}`);
+  
+      const data = response.data;
+      */
+
+    /*
+    if (data.status === "OK" && data.url) {
+
+      const link = document.createElement("a");
+      link.href = data.url;
+      link.setAttribute("download", "");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setLoadingMessage("✅ Fichier Excel généré !");
+      alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
+
+    } else {
+      alert("Erreur lors de la génération du fichier");
+    }
+      */
+    /*
+    if(data.status === "OK") {
+      await api.get(`/downloadexcel/${data.filename}`);
+      alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
+    }
+    else {
+      alert("Erreur lors de la génération du fichier");
+    }
+      */
+    /* 
+
+  } catch (error) {
+
+    console.error("Erreur normalisation", error);
+    alert("Erreur lors de la normalisation");
+
+  } finally {
+
+    setLoadingProcess(false);
+
+  }
+    */
   };
 
-  /* =========================
-     3´©ÅÔâú API normalisation
-  ========================= */
-  /*
- 
-  try {
- 
-    setLoadingMessage("ÔÅ│ Normalisation et g├®n├®ration Excel...");
- 
-    const response = await api.post(`/normalisation/${codificationId}`);
- 
-    const data = response.data;
-    */
 
-  /*
-  if (data.status === "OK" && data.url) {
-
-    const link = document.createElement("a");
-    link.href = data.url;
-    link.setAttribute("download", "");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    setLoadingMessage("Ô£à Fichier Excel g├®n├®r├® !");
-    alert("Ô£à Le fichier Excel a ├®t├® g├®n├®r├® et t├®l├®charg├® avec succ├¿s.");
-
-  } else {
-    alert("Erreur lors de la g├®n├®ration du fichier");
-  }
-    */
-  /*
-  if(data.status === "OK") {
-    await api.get(`/downloadexcel/${data.filename}`);
-    alert("Ô£à Le fichier Excel a ├®t├® g├®n├®r├® et t├®l├®charg├® avec succ├¿s.");
-  }
-  else {
-    alert("Erreur lors de la g├®n├®ration du fichier");
-  }
-    */
-  /* 
-
-} catch (error) {
-
-  console.error("Erreur normalisation", error);
-  alert("Erreur lors de la normalisation");
-
-} finally {
-
-  setLoadingProcess(false);
-
-}
-  */
-
-  const isEtudes = user?.profil?.libelle === PROFIL_ETUDES;
-  const isCQ = user?.profil?.libelle === PROFIL_CQ;
+  const isEtudes = profil === PROFIL_ETUDES;
+  const isCQ = profil === PROFIL_CQ;
   const loadingCodes = false;
 
   return (
@@ -649,7 +656,7 @@ const Parametrage = () => {
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1f2a5a] text-gray-900 dark:text-gray-100 px-4 py-2.5 focus:ring-2 focus:ring-[#FC8404] outline-none disabled:opacity-60"
           >
             <option value="">
-              {loadingCodes ? "Chargement..." : "-- Sélectionner un code dossier --"}
+              {loadingCodes ? "Chargement..." : "— Sélectionner un code —"}
             </option>
             {codeDossiers.map((c) => (
               <option key={c.id_code_dossier} value={c.id_code_dossier}>
@@ -694,7 +701,7 @@ const Parametrage = () => {
                     onChange={(e) => setSelectedConsigneId(Number(e.target.value) || "")}
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] text-gray-900 dark:text-gray-100 px-4 py-2.5 focus:ring-2 focus:ring-[#FC8404] outline-none"
                   >
-                    <option value="">-- Choisir une consigne --</option>
+                    <option value="">— Choisir une consigne —</option>
                     {consignes
                       .filter(
                         (c) => !consignesGroupes.some((cg) => cg.consigne_id === c.id)
@@ -724,7 +731,7 @@ const Parametrage = () => {
               </div>
             </div>
 
-            {/* Consignes ajout├®es */}
+            {/* Consignes ajoutées */}
             <div className="space-y-6">
               {consignesGroupes.map((cg) => {
                 const consigneInfo = consignes.find((c) => c.id === cg.consigne_id);
@@ -733,7 +740,7 @@ const Parametrage = () => {
                     key={cg.consigne_id}
                     className="p-4 border border-gray-300 dark:border-gray-600 rounded-lg space-y-4"
                   >
-                    {/* En-t├¬te consigne */}
+                    {/* En-tête consigne */}
                     <div className="flex justify-between items-center">
                       <div>
                         <h4 className="font-semibold text-gray-900 dark:text-white">
@@ -742,7 +749,6 @@ const Parametrage = () => {
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           ID: {cg.consigne_id}
                         </p>
-             
                       </div>
                       <button
                         onClick={() => handleRemoveConsigne(cg.consigne_id)}
@@ -788,7 +794,7 @@ const Parametrage = () => {
                       {/* Ajouter groupe */}
                       <div className="mt-3 p-3 bg-blue-50 dark:bg-[#374151] rounded space-y-2">
                         <label className="block text-sm font-medium text-gray-900 dark:text-white">
-                          S├®lectionner champs pour nouveau groupe
+                          Sélectionner champs pour nouveau groupe
                         </label>
                         <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-[#0f173a]">
                           {champs.map((champ) => (
@@ -840,7 +846,7 @@ const Parametrage = () => {
             <div className="flex items-center justify-end pt-4 border-t border-gray-300 dark:border-gray-600 gap-4">
               {editingId && (
                 <div className="mr-auto text-sm text-gray-600 dark:text-gray-300">
-                  Param├®trage charg├®: ID {editingId}
+                  Paramétrage chargé: ID {editingId}
                 </div>
               )}
 
@@ -850,7 +856,7 @@ const Parametrage = () => {
                   onClick={() => {
                     setEditingId(null);
                     setCodificationId(null);
-                    // alert("Mode ├®dition annul├®");
+                    // alert("Mode édition annulé");
                     window.location.reload();
                   }}
                   className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300"
@@ -887,10 +893,10 @@ const Parametrage = () => {
 
           {codificationId && (
             <button
-              onClick={() => setShowUploadExcelModal(true)}
+                onClick={() => setShowUploadExcelModal(true)}
               className="w-full py-3 rounded-lg bg-[#3b82f6] text-white font-semibold hover:bg-[#2563eb] flex items-center justify-center gap-2 transition"
             >
-              <Upload size={18} /> Importer Excel
+            <Upload size={18} /> Importer Excel
             </button>
           )}
 
@@ -902,7 +908,7 @@ const Parametrage = () => {
 
 
           {!disableDatamap && (
-            <Datamap
+            <Datamap 
               champs={champs}
               codificationId={codificationId}
               isEtudes={isEtudes}
@@ -937,22 +943,6 @@ const Parametrage = () => {
             tableName="data_import"
             selectedCodeDossierName={selectedCodeDossierNameValue}
             codification_id={codificationId ?? undefined}
-          />
-        );
-      })()}
-
-      {(() => {
-        const selectedDossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
-        const selectedCodeDossierInfo = codeDossiers.find((c) => c.id_code_dossier === selectedCodeDossier);
-        const nomDossierValue = selectedDossierInfo?.nom_dossier || "";
-        const nomCodeDossierValue = selectedCodeDossierInfo?.code_dossier || "";
-        return (
-          <SelectLotsModal
-            isOpen={showSelectLotsModal}
-            onClose={() => setShowSelectLotsModal(false)}
-            nomDossier={nomDossierValue}
-            nomCodeDossier={nomCodeDossierValue}
-            onConfirm={handleLotsSelected}
           />
         );
       })()}
