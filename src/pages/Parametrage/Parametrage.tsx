@@ -95,7 +95,8 @@ const Parametrage = () => {
   const [codificationId, setCodificationId] = useState<number | null>(null);
 
   const [showUploadExcelModal, setShowUploadExcelModal] = useState(false);
-
+  
+  const [fillValue, setFillValue] = useState("");
 
   useEffect(() => {
 
@@ -194,19 +195,20 @@ const Parametrage = () => {
       try {
         const resp = await api.get(`/consigne/parametrage/${codifId}`);
         const data = resp.data;
-        console.debug("parametrage response for", codifId, data);
 
-        // L'API retourne directement un tableau de consignes
+        // On vérifie si data est un tableau et s'il n'est PAS vide
         if (Array.isArray(data) && data.length > 0) {
           setConsignesGroupes(data);
-          console.debug("setting consignesGroupes", data);
           setEditingId(codifId);
         } else {
+          // Si la table parametre_consignes est vide pour ce codification_id, 
+          // on vide l'affichage des consignes
           setConsignesGroupes([]);
           setEditingId(null);
+          // Optionnel : vous pouvez ajouter un message console pour débugger
+          console.log("Aucun paramètre trouvé pour ce dossier, affichage masqué.");
         }
       } catch (err) {
-        // Pas de paramétrage existant ou erreur non bloquante
         setConsignesGroupes([]);
         setEditingId(null);
       }
@@ -231,6 +233,8 @@ const Parametrage = () => {
     }
     fetchConsignes();
   }, []);
+
+  
 
   const handleAddConsigne = () => {
     if (!selectedConsigneId) {
@@ -308,6 +312,8 @@ const Parametrage = () => {
   };
 
   const handleSaveChamps = async () => {
+
+    
     if (!selectedDossier || !selectedCodeDossier) {
       alert("Veuillez sélectionner un dossier et un code dossier");
       return;
@@ -317,6 +323,8 @@ const Parametrage = () => {
       alert("Ajoutez au moins une consigne");
       return;
     }
+
+    
 
     // Récupérer les noms des dossier et code dossier
     const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
@@ -338,6 +346,8 @@ const Parametrage = () => {
     };
 
     console.log("Payload à envoyer:", JSON.stringify(payload, null, 2));
+    console.log("Données envoyées au backend (Payload) :", payload);
+    
 
     try {
       if (editingId) {
@@ -656,6 +666,38 @@ const Parametrage = () => {
                         Supprimer
                       </button>
                     </div>
+                    
+                    {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR PAR DÉFAUT --- */}
+
+                    {/* On vérifie si la valeur existe. 
+                        Si elle est vide ou nulle, ce bloc entier ne sera pas rendu.
+                    */}
+                    {(cg.consigne_id === 6 || (cg.parametres?.valeur_defaut && cg.parametres.valeur_defaut.trim() !== "")) && (                 
+                        <div className="p-3 bg-orange-50 dark:bg-[#2a3570] rounded-lg border border-orange-200 dark:border-blue-800">
+                          <label className="block mb-1 text-xs font-bold text-orange-700 dark:text-orange-300 uppercase">
+                            Valeur à appliquer (ex: 9, NR, 7)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Saisir la valeur..."
+                            value={cg.parametres?.valeur_defaut || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setConsignesGroupes((prev) =>
+                                prev.map((item) =>
+                                  item.consigne_id === cg.consigne_id
+                                    ? { ...item, parametres: { ...item.parametres, valeur_defaut: val } }
+                                    : item
+                                )
+                              );
+                            }}
+                            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-2 text-sm focus:ring-2 focus:ring-[#FC8404] outline-none text-gray-900 dark:text-white"
+                          />
+                        </div>
+                    )}
+
+                    {/* --- FIN DU NOUVEAU CHAMP --- */}
+
 
                     {/* Groupes */}
                     <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
