@@ -64,25 +64,30 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
 
       console.log("📝 datamap updated:", { idq, field, value, updatedDatamap: updated });
 
-      // Ensuite, vérifier si on doit auto-calculer la Position du champ suivant
+      // Auto-calcul uniquement lorsque la longueur est modifiée
+      if (field !== 'longueur') {
+        console.log("⏭️ Auto-calcSkipped: le champ modifié n'est pas longueur");
+        return updated;
+      }
+
       const currentIndex = updated.findIndex((f) => f.idq === idq);
       const currentField = updated[currentIndex];
       
       console.log("🔍 Checking auto-calc conditions:", {
         currentIndex,
         currentField,
-        isValid: currentField.position > 0 && currentField.longueur > 0,
+        isValid: currentField.position >= 0 && currentField.longueur > 0,
         hasNext: currentIndex < updated.length - 1
       });
 
       // Auto-calcul si :
       // 1. Ce n'est pas le dernier champ
-      // 2. Position ET Longueur du champ actuel sont valides (> 0)
-      if (currentIndex < updated.length - 1 && currentField.position > 0 && currentField.longueur > 0) {
+      // 2. Position et longueur du champ actuel sont valides
+      if (currentIndex < updated.length - 1 && currentField.position >= 0 && currentField.longueur > 0) {
         const nextPosition = currentField.position + currentField.longueur;
         console.log(`✅ Auto-calc triggered: Next position = ${currentField.position} + ${currentField.longueur} = ${nextPosition}`);
         
-        // Toujours mettre à jour la Position du champ suivant
+        // Mettre à jour la Position du champ suivant
         return updated.map((f, idx) =>
           idx === currentIndex + 1 ? { ...f, position: nextPosition } : f
         );
