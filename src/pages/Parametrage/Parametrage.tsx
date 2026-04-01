@@ -43,7 +43,9 @@ interface ConsigneGroupes {
   consigne_id: number;
   groupes: Groupe[];
   parametres: {
-    valeur_defaut: string;
+    valeur_defaut?: string;
+    separateur?: string; // Ajouté
+    position?: string | number; // Ajouté
     mapping?: {
       source: string;
       target: string;
@@ -758,37 +760,77 @@ const Parametrage = () => {
                       </button>
                     </div>
 
-                    {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR PAR DÉFAUT --- */}
+                      {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR PAR DÉFAUT --- */}
+                      {(cg.consigne_id === 6 || (cg.parametres?.valeur_defaut && cg.parametres.valeur_defaut.trim() !== "")) && (
+                        <div className="p-3 bg-orange-50 dark:bg-[#2a3570] rounded-lg border border-orange-200 dark:border-blue-800">
+                          <label className="block mb-1 text-xs font-bold text-orange-700 dark:text-orange-300 uppercase">
+                            Valeur à appliquer (ex: 9, NR, 7)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Saisir la valeur..."
+                            value={cg.parametres?.valeur_defaut || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setConsignesGroupes((prev) =>
+                                prev.map((item) =>
+                                  item.consigne_id === cg.consigne_id
+                                    ? { ...item, parametres: { ...item.parametres, valeur_defaut: val } }
+                                    : item
+                                )
+                              );
+                            }}
+                            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-2 text-sm focus:ring-2 focus:ring-[#FC8404] outline-none text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      )}
+                      {/* --- FIN DU NOUVEAU CHAMP --- */}
 
-                    {/* On vérifie si la valeur existe. 
-                        Si elle est vide ou nulle, ce bloc entier ne sera pas rendu.
-                    */}
-                    {(cg.consigne_id === 6 || (cg.parametres?.valeur_defaut && cg.parametres.valeur_defaut.trim() !== "")) && (
-                      <div className="p-3 bg-orange-50 dark:bg-[#2a3570] rounded-lg border border-orange-200 dark:border-blue-800">
-                        <label className="block mb-1 text-xs font-bold text-orange-700 dark:text-orange-300 uppercase">
-                          Valeur à appliquer (ex: 9, NR, 7)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Saisir la valeur..."
-                          value={cg.parametres?.valeur_defaut || ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setConsignesGroupes((prev) =>
-                              prev.map((item) =>
-                                item.consigne_id === cg.consigne_id
-                                  ? { ...item, parametres: { ...item.parametres, valeur_defaut: val } }
-                                  : item
-                              )
-                            );
-                          }}
-                          className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-2 text-sm focus:ring-2 focus:ring-[#FC8404] outline-none text-gray-900 dark:text-white"
-                        />
-                      </div>
-                    )}
+                      {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR A EXTRAIRE NOM LOT (ID 2) --- */}
+                      {cg.consigne_id === 4 && (
+                        <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                              Séparateur
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: _"
+                              value={cg.parametres?.separateur || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item => 
+                                  item.consigne_id === cg.consigne_id 
+                                    ? { ...item, parametres: { ...item.parametres, separateur: val }} 
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                            />
+                          </div>
 
-                    {/* --- FIN DU NOUVEAU CHAMP --- */}
-
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                              Position (Index)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="Ex: 3"
+                              value={cg.parametres?.position || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item => 
+                                  item.consigne_id === cg.consigne_id 
+                                    ? { ...item, parametres: { ...item.parametres, position: val }} 
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {/* --- FIN DU NOUVEAU CHAMP --- */}
 
                     {/* Groupes */}
                     <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
