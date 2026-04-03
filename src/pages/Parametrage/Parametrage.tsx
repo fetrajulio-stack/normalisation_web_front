@@ -8,7 +8,7 @@ import api from "../../services/api";
 import useAuth from "../../context/AuthContext";
 import { PROFIL_CQ, PROFIL_ETUDES } from "../../constants/Constant";
 import axios from "axios";
-
+import MergeExcelModal from "./MergeExcelModal";
 
 export interface Cathegory {
   id_code_dossier: number;
@@ -44,8 +44,11 @@ interface ConsigneGroupes {
   groupes: Groupe[];
   parametres: {
     valeur_defaut?: string;
-    separateur?: string; // Ajouté
-    position?: string | number; // Ajouté
+    separateur?: string;
+    position?: string | number;
+    champ_principal?: string;
+    champ_autre?: string;
+    valeur_declencheuse?: string;
     mapping?: {
       source: string;
       target: string;
@@ -105,6 +108,8 @@ const Parametrage = () => {
   const [showSelectLotsModal, setShowSelectLotsModal] = useState(false);
   const [selectedLots, setSelectedLots] = useState<string[]>([]);
   const [mappingConsigneId, setMappingConsigneId] = useState<number | null>(null);
+
+  const [showMergeModal, setShowMergeModal] = useState(false);
 
   useEffect(() => {
 
@@ -601,6 +606,9 @@ const Parametrage = () => {
   const isCQ = user?.profil?.libelle === PROFIL_CQ;
   const loadingCodes = false;
 
+
+  
+
   return (
     <div className="p-6 bg-[#ffffff] dark:bg-[#080d24] min-h-[calc(100vh-72px-100px)]">
       <PageHeader />
@@ -832,6 +840,87 @@ const Parametrage = () => {
                       )}
                       {/* --- FIN DU NOUVEAU CHAMP --- */}
 
+                      {/* --- NOUVEAU : CONFIGURATION DYNAMIQUE FUSION CHAMP AUTRE (ID 7) --- */}
+                      {cg.consigne_id === 7 && (
+                      <div className="p-4 bg-slate-900 border border-orange-500 rounded-lg space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          
+                          {/* Champ Cible (ex: q16) */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-gray-400 uppercase font-medium">Champ Cible</label>
+                            <input
+                              type="text"
+                              placeholder="ex: q16"
+                              value={cg.parametres?.champ_principal || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item => 
+                                  item.consigne_id === cg.consigne_id 
+                                    ? { ...item, parametres: { ...item.parametres, champ_principal: val }} 
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-700 bg-[#0f173a] px-3 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-orange-500"
+                            />
+                          </div>
+
+                          {/* Déclencheur (ex: 2 ou vide) */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-gray-400 uppercase font-medium">Déclencheur (Optionnel)</label>
+                            <input
+                              type="text"
+                              placeholder="Vide = systématique"
+                              // Force l'affichage d'une chaîne vide même si la donnée est null/undefined
+                              value={cg.parametres?.valeur_declencheuse ?? ""} 
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item => 
+                                  item.consigne_id === cg.consigne_id 
+                                    ? { 
+                                        ...item, 
+                                        parametres: { 
+                                          ...item.parametres, 
+                                          // Sécurité : si l'input est vide, on enregistre ""
+                                          valeur_declencheuse: val === "" ? "" : val 
+                                        } 
+                                      } 
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-700 bg-[#0f173a] px-3 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-orange-500"
+                            />
+                          </div>
+
+                          {/* Champ Source (ex: q16_pk) */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-gray-400 uppercase font-medium">Champ Source (PK)</label>
+                            <input
+                              type="text"
+                              placeholder="ex: q16_pk"
+                              value={cg.parametres?.champ_autre || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item => 
+                                  item.consigne_id === cg.consigne_id 
+                                    ? { ...item, parametres: { ...item.parametres, champ_autre: val }} 
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-700 bg-[#0f173a] px-3 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-orange-500"
+                            />
+                          </div>
+
+                        </div>
+                        <div className="flex items-start space-x-2">
+                          <span className="text-orange-500 text-xs">⚠</span>
+                          <p className="text-[10px] text-gray-400 italic">
+                            Si le <strong>Champ Source</strong> est rempli, sa valeur écrasera le <strong>Champ Cible</strong> (selon le déclencheur). La source sera ensuite supprimée de l'export Excel.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+
                     {/* Groupes */}
                     <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
                       {cg.groupes.length > 0 && (
@@ -990,6 +1079,18 @@ const Parametrage = () => {
             />
           )}
 
+          {/* --- NOUVEAU BOUTON  */}
+            {editingId && (
+              <button
+                type="button"
+                onClick={() => setShowMergeModal(true)}
+                className="w-full py-3 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] flex items-center justify-center gap-2 transition shadow-md"
+              >
+                <Upload size={18} />
+                Assembler 2 fichiers Excel
+              </button>
+            )}
+
 
           <div className="w-full mt-4">
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -1036,9 +1137,20 @@ const Parametrage = () => {
           />
         );
       })()}
+
+
+      {/* --- AJOUTEZ LE CODE ICI --- */}
+      <MergeExcelModal 
+        isOpen={showMergeModal} 
+        onClose={() => setShowMergeModal(false)} 
+      />
+
     </div>
+    
   );
+
 };
+
 
 export default Parametrage;
 
