@@ -832,6 +832,30 @@ const Parametrage = () => {
                       )}
                       {/* --- FIN DU NOUVEAU CHAMP --- */}
 
+                      {/* --- NOUVEAU : CHAMP DE SAISIE POUR AJOUTER UN SÉPARATEUR (ID 2) --- */}
+                      {cg.consigne_id === 27 && (
+                        <div className="p-3 bg-green-50 dark:bg-[#2a3570]/50 rounded-lg border border-green-200 dark:border-green-800">
+                          <label className="block mb-1 text-xs font-bold text-green-700 dark:text-green-300 uppercase">
+                            Séparateur
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ex: ;"
+                            value={cg.parametres?.separateur || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setConsignesGroupes(prev => prev.map(item => 
+                                item.consigne_id === cg.consigne_id 
+                                  ? { ...item, parametres: { ...item.parametres, separateur: val }} 
+                                  : item
+                              ));
+                            }}
+                            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      )}
+                      {/* --- FIN DU NOUVEAU CHAMP --- */}
+
                     {/* Groupes */}
                     <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
                       {cg.groupes.length > 0 && (
