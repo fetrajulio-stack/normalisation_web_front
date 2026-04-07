@@ -85,8 +85,8 @@ const Parametrage = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
 
-const [searchCodeDossier, setSearchCodeDossier] = useState("");
-const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
+  const [searchCodeDossier, setSearchCodeDossier] = useState("");
+  const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
 
 
 
@@ -557,8 +557,8 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
 
 
   const filteredCodes = codeDossiers.filter((c) =>
-  c.code_dossier.toLowerCase().includes(searchCodeDossier.toLowerCase())
-);
+    c.code_dossier.toLowerCase().includes(searchCodeDossier.toLowerCase())
+  );
 
   /* =========================
      3´©ÅÔâú API normalisation
@@ -619,7 +619,7 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
   const loadingCodes = false;
 
 
-  
+
 
   return (
     <div className="p-6 bg-[#ffffff] dark:bg-[#080d24] min-h-[calc(100vh-72px-100px)]">
@@ -800,85 +800,85 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
                       </button>
                     </div>
 
-                      {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR PAR DÉFAUT --- */}
-                      {(cg.consigne_id === 6 || (cg.parametres?.valeur_defaut && cg.parametres.valeur_defaut.trim() !== "")) && (
-                        <div className="p-3 bg-orange-50 dark:bg-[#2a3570] rounded-lg border border-orange-200 dark:border-blue-800">
-                          <label className="block mb-1 text-xs font-bold text-orange-700 dark:text-orange-300 uppercase">
-                            Valeur à appliquer (ex: 9, NR, 7)
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Saisir la valeur..."
-                            value={cg.parametres?.valeur_defaut || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setConsignesGroupes((prev) =>
-                                prev.map((item) =>
+                    {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR PAR DÉFAUT --- */}
+                    {(cg.consigne_id === 6 || (cg.parametres?.valeur_defaut && cg.parametres.valeur_defaut.trim() !== "")) && (
+                      <div className="p-3 bg-orange-50 dark:bg-[#2a3570] rounded-lg border border-orange-200 dark:border-blue-800">
+                        <label className="block mb-1 text-xs font-bold text-orange-700 dark:text-orange-300 uppercase">
+                          Valeur à appliquer (ex: 9, NR, 7)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Saisir la valeur..."
+                          value={cg.parametres?.valeur_defaut || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setConsignesGroupes((prev) =>
+                              prev.map((item) =>
+                                item.consigne_id === cg.consigne_id
+                                  ? { ...item, parametres: { ...item.parametres, valeur_defaut: val } }
+                                  : item
+                              )
+                            );
+                          }}
+                          className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-2 text-sm focus:ring-2 focus:ring-[#FC8404] outline-none text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    )}
+                    {/* --- FIN DU NOUVEAU CHAMP --- */}
+
+                    {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR A EXTRAIRE NOM LOT (ID 2) --- */}
+                    {cg.consigne_id === 4 && (
+                      <div className="space-y-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Séparateur</label>
+                            <input
+                              type="text"
+                              value={cg.parametres?.separateur || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item =>
                                   item.consigne_id === cg.consigne_id
-                                    ? { ...item, parametres: { ...item.parametres, valeur_defaut: val } }
+                                    ? { ...item, parametres: { ...item.parametres, separateur: val } }
                                     : item
-                                )
-                              );
-                            }}
-                            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-2 text-sm focus:ring-2 focus:ring-[#FC8404] outline-none text-gray-900 dark:text-white"
-                          />
-                        </div>
-                      )}
-                      {/* --- FIN DU NOUVEAU CHAMP --- */}
-
-                      {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR A EXTRAIRE NOM LOT (ID 2) --- */}
-                        {cg.consigne_id === 4 && (
-                          <div className="space-y-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Séparateur</label>
-                                <input
-                                  type="text"
-                                  value={cg.parametres?.separateur || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setConsignesGroupes(prev => prev.map(item => 
-                                      item.consigne_id === cg.consigne_id 
-                                        ? { ...item, parametres: { ...item.parametres, separateur: val }} 
-                                        : item
-                                    ));
-                                  }}
-                                  className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
-                                />
-                              </div>
-
-                              <div className="space-y-1">
-                                <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Position (Index)</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={cg.parametres?.position || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setConsignesGroupes(prev => prev.map(item => 
-                                      item.consigne_id === cg.consigne_id 
-                                        ? { ...item, parametres: { ...item.parametres, position: val }} 
-                                        : item
-                                    ));
-                                  }}
-                                  className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
-                                />
-                              </div>
-                            </div>
-                            {/* Utilisation de la liste des champs du groupe si elle existe */}
-                            <div className="text-[10px] text-blue-600 dark:text-blue-400 italic">
-                              Cible : <span className="font-mono font-bold">Extraction vers le groupe sélectionné</span>
-                            </div>
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
+                            />
                           </div>
-                        )}
-                      {/* --- FIN DU NOUVEAU CHAMP --- */}
+
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Position (Index)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={cg.parametres?.position || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item =>
+                                  item.consigne_id === cg.consigne_id
+                                    ? { ...item, parametres: { ...item.parametres, position: val } }
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
+                            />
+                          </div>
+                        </div>
+                        {/* Utilisation de la liste des champs du groupe si elle existe */}
+                        <div className="text-[10px] text-blue-600 dark:text-blue-400 italic">
+                          Cible : <span className="font-mono font-bold">Extraction vers le groupe sélectionné</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* --- FIN DU NOUVEAU CHAMP --- */}
 
 
-                      {/* --- NOUVEAU : CONFIGURATION DYNAMIQUE FUSION CHAMP AUTRE (ID 7) --- */}
-                      {cg.consigne_id === 7 && (
+                    {/* --- NOUVEAU : CONFIGURATION DYNAMIQUE FUSION CHAMP AUTRE (ID 7) --- */}
+                    {cg.consigne_id === 7 && (
                       <div className="p-4 bg-slate-900 border border-orange-500 rounded-lg space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          
+
                           {/* Champ Cible (ex: q16) */}
                           <div className="space-y-1">
                             <label className="text-[10px] text-gray-400 uppercase font-medium">Champ Cible</label>
@@ -888,9 +888,9 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
                               value={cg.parametres?.champ_principal || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                setConsignesGroupes(prev => prev.map(item => 
-                                  item.consigne_id === cg.consigne_id 
-                                    ? { ...item, parametres: { ...item.parametres, champ_principal: val }} 
+                                setConsignesGroupes(prev => prev.map(item =>
+                                  item.consigne_id === cg.consigne_id
+                                    ? { ...item, parametres: { ...item.parametres, champ_principal: val } }
                                     : item
                                 ));
                               }}
@@ -905,19 +905,19 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
                               type="text"
                               placeholder="Vide = systématique"
                               // Force l'affichage d'une chaîne vide même si la donnée est null/undefined
-                              value={cg.parametres?.valeur_declencheuse ?? ""} 
+                              value={cg.parametres?.valeur_declencheuse ?? ""}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                setConsignesGroupes(prev => prev.map(item => 
-                                  item.consigne_id === cg.consigne_id 
-                                    ? { 
-                                        ...item, 
-                                        parametres: { 
-                                          ...item.parametres, 
-                                          // Sécurité : si l'input est vide, on enregistre ""
-                                          valeur_declencheuse: val === "" ? "" : val 
-                                        } 
-                                      } 
+                                setConsignesGroupes(prev => prev.map(item =>
+                                  item.consigne_id === cg.consigne_id
+                                    ? {
+                                      ...item,
+                                      parametres: {
+                                        ...item.parametres,
+                                        // Sécurité : si l'input est vide, on enregistre ""
+                                        valeur_declencheuse: val === "" ? "" : val
+                                      }
+                                    }
                                     : item
                                 ));
                               }}
@@ -934,9 +934,9 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
                               value={cg.parametres?.champ_autre || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                setConsignesGroupes(prev => prev.map(item => 
-                                  item.consigne_id === cg.consigne_id 
-                                    ? { ...item, parametres: { ...item.parametres, champ_autre: val }} 
+                                setConsignesGroupes(prev => prev.map(item =>
+                                  item.consigne_id === cg.consigne_id
+                                    ? { ...item, parametres: { ...item.parametres, champ_autre: val } }
                                     : item
                                 ));
                               }}
@@ -954,40 +954,75 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
                       </div>
                     )}
 
-                      {/* --- NOUVEAU : CHAMP DE SAISIE POUR AJOUTER UN SÉPARATEUR (ID 2) --- */}
-                      {cg.consigne_id === 27 && (
-                      <div className="space-y-4 p-4 bg-slate-900 border border-green-500 rounded-lg">
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-green-400 uppercase tracking-wider">
-                              Nom du champ de destination (Excel)
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="Ex: nom_prenom"
-                              value={cg.parametres?.separateur || ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setConsignesGroupes(prev => prev.map(item => 
-                                  item.consigne_id === cg.consigne_id 
-                                    ? { ...item, parametres: { ...item.parametres, separateur: val }} 
-                                    : item
-                                ));
-                              }}
-                              className="w-full rounded border border-green-500/30 bg-[#0f173a] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-green-500"
-                            />
-                            <p className="text-[9px] text-gray-400 mt-1 italic">
-                              Saisissez ici le nom de la colonne qui sera créée dans l'export.
-                            </p>
-                          </div>
+                    {/* --- NOUVEAU : CHAMP DE SAISIE POUR AJOUTER UN SÉPARATEUR (ID 2) --- */}
 
-                          <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
-                            <p className="text-[10px] text-green-300">
-                              <strong>Note :</strong> Les champs sélectionnés dans les groupes ci-dessous (Ordre 1, Ordre 2...) seront fusionnés avec un espace.
-                            </p>
+                    {/* --- FIN DU NOUVEAU CHAMP --- */}
+                    {cg.consigne_id === 27 && (
+                      <div className="space-y-4 p-4 bg-slate-900 border border-green-500 rounded-lg">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-green-400 uppercase tracking-wider">
+                            Nom du champ de destination (Excel)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ex: nom_prenom"
+                            value={cg.parametres?.separateur || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setConsignesGroupes(prev => prev.map(item =>
+                                item.consigne_id === cg.consigne_id
+                                  ? { ...item, parametres: { ...item.parametres, separateur: val } }
+                                  : item
+                              ));
+                            }}
+                            className="w-full rounded border border-green-500/30 bg-[#0f173a] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-green-500"
+                          />
+                          <p className="text-[9px] text-gray-400 mt-1 italic">
+                            Saisissez ici le nom de la colonne qui sera créée dans l'export.
+                          </p>
+                        </div>
+
+                        <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
+                          <p className="text-[10px] text-green-300">
+                            <strong>Note :</strong> Les champs sélectionnés dans les groupes ci-dessous (Ordre 1, Ordre 2...) seront fusionnés avec un espace.
+                          </p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                            Nom du lot à extraire
+                          </label>
+                          <div className="w-full rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-[#1f2a5a] px-3 py-1.5 text-sm text-gray-900 dark:text-white">
+                            {/* cg.parametres?.mapping?.target || "Non défini" */}
                           </div>
-                        </div>                        
-                      )}
-                      {/* --- FIN DU NOUVEAU CHAMP --- */}
+                        </div>
+                      </div>
+                    )}
+
+
+                    {/* --- NOUVEAU : CHAMP DE SAISIE POUR AJOUTER UN SÉPARATEUR (ID 2) --- */}
+                    {/* {cg.consigne_id === 27 && (
+                        <div className="p-3 bg-green-50 dark:bg-[#2a3570]/50 rounded-lg border border-green-200 dark:border-green-800">
+                          <label className="block mb-1 text-xs font-bold text-green-700 dark:text-green-300 uppercase">
+                            Séparateur
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ex: ;"
+                            value={cg.parametres?.separateur || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setConsignesGroupes(prev => prev.map(item => 
+                                item.consigne_id === cg.consigne_id 
+                                  ? { ...item, parametres: { ...item.parametres, separateur: val }} 
+                                  : item
+                              ));
+                            }}
+                            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      )} */}
+                    {/* --- FIN DU NOUVEAU CHAMP --- */}
 
                     {/* Groupes */}
                     <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
@@ -1148,16 +1183,16 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
           )}
 
           {/* --- NOUVEAU BOUTON  */}
-            {editingId && (
-              <button
-                type="button"
-                onClick={() => setShowMergeModal(true)}
-                className="w-full py-3 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] flex items-center justify-center gap-2 transition shadow-md"
-              >
-                <Upload size={18} />
-                Assembler 2 fichiers Excel
-              </button>
-            )}
+          {editingId && (
+            <button
+              type="button"
+              onClick={() => setShowMergeModal(true)}
+              className="w-full py-3 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] flex items-center justify-center gap-2 transition shadow-md"
+            >
+              <Upload size={18} />
+              Assembler 2 fichiers Excel
+            </button>
+          )}
 
 
           <div className="w-full mt-4">
@@ -1208,13 +1243,15 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
 
 
       {/* --- AJOUTEZ LE CODE ICI --- */}
-      <MergeExcelModal 
-        isOpen={showMergeModal} 
-        onClose={() => setShowMergeModal(false)} 
+      <MergeExcelModal
+        isOpen={showMergeModal}
+        onClose={() => setShowMergeModal(false)}
+        codeDossier={searchCodeDossier}
+        dossierName={searchDossier}
       />
 
     </div>
-    
+
   );
 
 };
