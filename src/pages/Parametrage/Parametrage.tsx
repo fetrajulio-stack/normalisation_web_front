@@ -84,6 +84,13 @@ const Parametrage = () => {
   const [filteredDossiers, setFilteredDossiers] = useState<Dossier[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+
+const [searchCodeDossier, setSearchCodeDossier] = useState("");
+const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
+
+
+
+
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
   const [codeDossiers, setCodeDossiers] = useState<Cathegory[]>([]);
   const [selectedDossier, setSelectedDossier] = useState<number | "">("");
@@ -548,6 +555,11 @@ const Parametrage = () => {
       });
   };
 
+
+  const filteredCodes = codeDossiers.filter((c) =>
+  c.code_dossier.toLowerCase().includes(searchCodeDossier.toLowerCase())
+);
+
   /* =========================
      3´©ÅÔâú API normalisation
   ========================= */
@@ -654,25 +666,45 @@ const Parametrage = () => {
         </div>
 
         {/* Code Dossier */}
+        {/* Code Dossier avec Recherche */}
         <div className="md:col-span-2">
           <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-200">
             Code dossier
           </label>
-          <select
-            value={selectedCodeDossier}
-            onChange={(e) => setSelectedCodeDossier(Number(e.target.value))}
-            disabled={!selectedDossier || loadingCodes}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1f2a5a] text-gray-900 dark:text-gray-100 px-4 py-2.5 focus:ring-2 focus:ring-[#FC8404] outline-none disabled:opacity-60"
-          >
-            <option value="">
-              {loadingCodes ? "Chargement..." : "-- Sélectionner un code dossier --"}
-            </option>
-            {codeDossiers.map((c) => (
-              <option key={c.id_code_dossier} value={c.id_code_dossier}>
-                {c.code_dossier}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder={loadingCodes ? "Chargement..." : "Rechercher un code..."}
+              value={searchCodeDossier}
+              disabled={!selectedDossier || loadingCodes}
+              onChange={(e) => {
+                setSearchCodeDossier(e.target.value);
+                setSelectedCodeDossier(""); // Réinitialise la sélection si l'utilisateur tape à nouveau
+                setShowCodeSuggestions(true);
+              }}
+              onFocus={() => setShowCodeSuggestions(true)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-[#1f2a5a] text-white px-4 py-2.5 focus:ring-2 focus:ring-[#FC8404] outline-none disabled:opacity-60"
+            />
+
+            {/* Liste des suggestions */}
+            {showCodeSuggestions && filteredCodes.length > 0 && (
+              <ul className="absolute z-10 w-full mt-1 max-h-48 overflow-auto rounded-lg border border-gray-300 bg-[#1f2a5a] shadow-lg text-white">
+                {filteredCodes.map((c) => (
+                  <li
+                    key={c.id_code_dossier}
+                    onClick={() => {
+                      setSelectedCodeDossier(c.id_code_dossier);
+                      setSearchCodeDossier(c.code_dossier);
+                      setShowCodeSuggestions(false);
+                    }}
+                    className="px-4 py-2 cursor-pointer hover:bg-[#2a3570] transition-colors"
+                  >
+                    {c.code_dossier}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         {/* Bouton Valider */}
@@ -795,50 +827,52 @@ const Parametrage = () => {
                       {/* --- FIN DU NOUVEAU CHAMP --- */}
 
                       {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR A EXTRAIRE NOM LOT (ID 2) --- */}
-                      {cg.consigne_id === 4 && (
-                        <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
-                              Séparateur
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="Ex: _"
-                              value={cg.parametres?.separateur || ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setConsignesGroupes(prev => prev.map(item => 
-                                  item.consigne_id === cg.consigne_id 
-                                    ? { ...item, parametres: { ...item.parametres, separateur: val }} 
-                                    : item
-                                ));
-                              }}
-                              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                            />
-                          </div>
+                        {cg.consigne_id === 4 && (
+                          <div className="space-y-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Séparateur</label>
+                                <input
+                                  type="text"
+                                  value={cg.parametres?.separateur || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setConsignesGroupes(prev => prev.map(item => 
+                                      item.consigne_id === cg.consigne_id 
+                                        ? { ...item, parametres: { ...item.parametres, separateur: val }} 
+                                        : item
+                                    ));
+                                  }}
+                                  className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
+                                />
+                              </div>
 
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
-                              Position (Index)
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="Ex: 3"
-                              value={cg.parametres?.position || ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setConsignesGroupes(prev => prev.map(item => 
-                                  item.consigne_id === cg.consigne_id 
-                                    ? { ...item, parametres: { ...item.parametres, position: val }} 
-                                    : item
-                                ));
-                              }}
-                              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                            />
+                              <div className="space-y-1">
+                                <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Position (Index)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={cg.parametres?.position || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setConsignesGroupes(prev => prev.map(item => 
+                                      item.consigne_id === cg.consigne_id 
+                                        ? { ...item, parametres: { ...item.parametres, position: val }} 
+                                        : item
+                                    ));
+                                  }}
+                                  className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
+                                />
+                              </div>
+                            </div>
+                            {/* Utilisation de la liste des champs du groupe si elle existe */}
+                            <div className="text-[10px] text-blue-600 dark:text-blue-400 italic">
+                              Cible : <span className="font-mono font-bold">Extraction vers le groupe sélectionné</span>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                       {/* --- FIN DU NOUVEAU CHAMP --- */}
+
 
                       {/* --- NOUVEAU : CONFIGURATION DYNAMIQUE FUSION CHAMP AUTRE (ID 7) --- */}
                       {cg.consigne_id === 7 && (
@@ -920,6 +954,40 @@ const Parametrage = () => {
                       </div>
                     )}
 
+                      {/* --- NOUVEAU : CHAMP DE SAISIE POUR AJOUTER UN SÉPARATEUR (ID 2) --- */}
+                      {cg.consigne_id === 27 && (
+                      <div className="space-y-4 p-4 bg-slate-900 border border-green-500 rounded-lg">
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-green-400 uppercase tracking-wider">
+                              Nom du champ de destination (Excel)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: nom_prenom"
+                              value={cg.parametres?.separateur || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item => 
+                                  item.consigne_id === cg.consigne_id 
+                                    ? { ...item, parametres: { ...item.parametres, separateur: val }} 
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-green-500/30 bg-[#0f173a] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-green-500"
+                            />
+                            <p className="text-[9px] text-gray-400 mt-1 italic">
+                              Saisissez ici le nom de la colonne qui sera créée dans l'export.
+                            </p>
+                          </div>
+
+                          <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
+                            <p className="text-[10px] text-green-300">
+                              <strong>Note :</strong> Les champs sélectionnés dans les groupes ci-dessous (Ordre 1, Ordre 2...) seront fusionnés avec un espace.
+                            </p>
+                          </div>
+                        </div>                        
+                      )}
+                      {/* --- FIN DU NOUVEAU CHAMP --- */}
 
                     {/* Groupes */}
                     <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
