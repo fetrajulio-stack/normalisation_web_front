@@ -115,45 +115,6 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
   const [showSelectLotsModal, setShowSelectLotsModal] = useState(false);
   const [selectedLots, setSelectedLots] = useState<string[]>([]);
   const [mappingConsigneId, setMappingConsigneId] = useState<number | null>(null);
-  const [lotNomAExtraire, setLotNomAExtraire] = useState<string>("");
-
-  const fetchLotNomAExtraire = async (nomDossier: string, codeDossier: string) => {
-    try {
-
-      const res = await api.get("parametrage/nom-lot", {
-        params: {
-          nom_dossier: nomDossier,
-          nom_code_dossier: codeDossier,
-        },
-      });
-
-      const lotName = res.data?.lot_name || "";
-      setLotNomAExtraire(lotName);
-
-      setConsignesGroupes((prev) =>
-        prev.map((item) => {
-          if (item.consigne_id === 4) {
-            return {
-              ...item,
-              parametres: {
-                ...item.parametres,
-                mapping: {
-                  ...(item.parametres?.mapping ?? { source: "", target: "" }),
-                  target: lotName,
-                },
-              },
-            };
-          }
-          return item;
-        })
-      );
-
-      return lotName;
-    } catch (error) {
-      console.error("Erreur récupération lot nom:", error);
-      return "";
-    }
-  };
 
   const [showMergeModal, setShowMergeModal] = useState(false);
 
@@ -197,8 +158,7 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
     setCodeDossiers(dossier?.cathegories ?? []);
   }, [selectedDossier]);
 
-  // Aucune récupération automatique dès le changement de sélection.
-  // Le lot sera recherché uniquement lors de l'ajout de la consigne 4.
+
 
   const handleValidateDossier = async () => {
 
@@ -258,11 +218,6 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
         if (Array.isArray(data) && data.length > 0) {
           setConsignesGroupes(data);
           setEditingId(codifId);
-
-          // Si la consigne 4 est présente, on récupère le lot à extraire depuis le serveur
-          if (data.some((cg: ConsigneGroupes) => cg.consigne_id === 4)) {
-            await fetchLotNomAExtraire(dossierInfo.nom_dossier, codeDossierInfo.code_dossier);
-          }
         } else {
           // Si la table parametre_consignes est vide pour ce codification_id, 
           // on vide l'affichage des consignes
@@ -299,29 +254,16 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
 
 
 
-  const handleAddConsigne = async () => {
+  const handleAddConsigne = () => {
     if (!selectedConsigneId) {
-      alert("Sélectionnez d'abord une consigne");
+      alert("S├®lectionnez d'abord une consigne");
       return;
     }
 
-    // Vérifier si la consigne existe déjà
+    // V├®rifier si la consigne existe d├®j├á
     if (consignesGroupes.some((c) => c.consigne_id === selectedConsigneId)) {
-      alert("Cette consigne est déjà ajoutée");
+      alert("Cette consigne est d├®j├á ajout├®e");
       return;
-    }
-
-    let lotName = "";
-    if (selectedConsigneId === 4) {
-      const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
-      const codeDossierInfo = codeDossiers.find((c) => c.id_code_dossier === selectedCodeDossier);
-
-      if (!dossierInfo || !codeDossierInfo) {
-        alert("Sélectionnez un dossier et un code dossier avant d'ajouter la consigne 4");
-        return;
-      }
-
-      lotName = await fetchLotNomAExtraire(dossierInfo.nom_dossier, codeDossierInfo.code_dossier);
     }
 
     const newConsigneGroupes: ConsigneGroupes = {
@@ -329,18 +271,10 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
       groupes: [],
       parametres: {
         valeur_defaut: "",
-        ...(selectedConsigneId === 4
-          ? {
-              mapping: {
-                source: "",
-                target: lotName || lotNomAExtraire || "",
-              },
-            }
-          : {}),
       },
     };
 
-    setConsignesGroupes((prev) => [...prev, newConsigneGroupes]);
+    setConsignesGroupes([...consignesGroupes, newConsigneGroupes]);
     setSelectedConsigneId("");
     setSelectedGroupChamps([]);
   };
@@ -399,7 +333,7 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
 
 
     if (!selectedDossier || !selectedCodeDossier) {
-      alert("Veuillez sélectionner un dossier et un code dossier");
+      alert("Veuillez s├®lectionner un dossier et un code dossier");
       return;
     }
 
@@ -415,46 +349,16 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
     );
 
     if (!dossierInfo || !codeDossierInfo) {
-      alert("Erreur: dossier ou code dossier non trouvé");
+      alert("Erreur: dossier ou code dossier non trouv├®");
       return;
     }
-
-    // Nettoyer les consignes avant envoi (supprimer le mapping qui est juste pour l'affichage)
-    const cleanConsignes = consignesGroupes.map((cg) => {
-      const parametres: any = {
-        valeur_defaut: cg.parametres?.valeur_defaut || "",
-      };
-
-      // Ajouter séparateur et position si consigne 4
-      if (cg.consigne_id === 4) {
-        if (cg.parametres?.separateur) {
-          parametres.separateur = cg.parametres.separateur;
-        }
-        if (cg.parametres?.position) {
-          parametres.position = cg.parametres.position;
-        }
-      }
-
-      // Ajouter séparateur si consigne 27
-      if (cg.consigne_id === 27) {
-        if (cg.parametres?.separateur) {
-          parametres.separateur = cg.parametres.separateur;
-        }
-      }
-
-      return {
-        consigne_id: cg.consigne_id,
-        groupes: cg.groupes,
-        parametres,
-      };
-    });
 
     const payload: PayloadConsignes = {
       nom_dossier: dossierInfo.nom_dossier,
       nom_code_dossier: codeDossierInfo.code_dossier,
       codification_id: codificationId ?? undefined,
       //id_codification: codificationId ?? undefined,
-      consignes: cleanConsignes,
+      consignes: consignesGroupes,
     };
 
     try {
@@ -465,10 +369,10 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
           }
         }
         );
-        console.log("Réponse du serveur (update):", response.data);
+        console.log("R├®ponse du serveur (update):", response.data);
       } else {
         const response = await api.post("/consigne/parametrage/add", payload);
-        console.log("Réponse du serveur (add):", response.data);
+        console.log("R├®ponse du serveur (add):", response.data);
       }
       alert(editingId ? "Modifié avec succés !" : "Enregistré avec succés !");
       setConsignesGroupes([]);
@@ -923,7 +827,6 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
                       {/* --- FIN DU NOUVEAU CHAMP --- */}
 
                       {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR A EXTRAIRE NOM LOT (ID 2) --- */}
-<<<<<<< HEAD
                         {cg.consigne_id === 4 && (
                           <div className="space-y-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
                             <div className="grid grid-cols-2 gap-4">
@@ -977,10 +880,6 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           
                           {/* Champ Cible (ex: q16) */}
-=======
-                      {cg.consigne_id === 4 && (
-                        <div className="grid grid-cols-3 gap-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
->>>>>>> d304f897a5de02c6c2ac395b74bfd849581f3d0c
                           <div className="space-y-1">
                             <label className="text-[10px] text-gray-400 uppercase font-medium">Champ Cible</label>
                             <input
@@ -1086,44 +985,7 @@ const [showCodeSuggestions, setShowCodeSuggestions] = useState(false);
                               <strong>Note :</strong> Les champs sélectionnés dans les groupes ci-dessous (Ordre 1, Ordre 2...) seront fusionnés avec un espace.
                             </p>
                           </div>
-<<<<<<< HEAD
                         </div>                        
-=======
-
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
-                              Nom du lot à extraire
-                            </label>
-                            <div className="w-full rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-[#1f2a5a] px-3 py-1.5 text-sm text-gray-900 dark:text-white">
-                              {cg.parametres?.mapping?.target || "Non défini"}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {/* --- FIN DU NOUVEAU CHAMP --- */}
-
-                      {/* --- NOUVEAU : CHAMP DE SAISIE POUR AJOUTER UN SÉPARATEUR (ID 2) --- */}
-                      {cg.consigne_id === 27 && (
-                        <div className="p-3 bg-green-50 dark:bg-[#2a3570]/50 rounded-lg border border-green-200 dark:border-green-800">
-                          <label className="block mb-1 text-xs font-bold text-green-700 dark:text-green-300 uppercase">
-                            Séparateur
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Ex: ;"
-                            value={cg.parametres?.separateur || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setConsignesGroupes(prev => prev.map(item => 
-                                item.consigne_id === cg.consigne_id 
-                                  ? { ...item, parametres: { ...item.parametres, separateur: val }} 
-                                  : item
-                              ));
-                            }}
-                            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none text-gray-900 dark:text-white"
-                          />
-                        </div>
->>>>>>> d304f897a5de02c6c2ac395b74bfd849581f3d0c
                       )}
                       {/* --- FIN DU NOUVEAU CHAMP --- */}
 
