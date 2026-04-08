@@ -83,7 +83,8 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
       .toLowerCase()                      // Convertir en minuscules
       .replace(/[ /=-]/g, "_")            // Remplacer les espaces, /, = et - par _
       .replace(/_+/g, "_")                // Remplacer les doublons de _ par un seul _
-      .trim("_");                         // Supprimer les _ en début et fin de chaîne
+    //  .trim("_");                         // Supprimer les _ en début et fin de chaîne
+      .replace(/^_+|_+$/g, "");           // Supprimer les _ en début et fin de chaîne
   };
 
   const handleSaveDatamap = async () => {
