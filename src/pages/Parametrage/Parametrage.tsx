@@ -115,8 +115,46 @@ const Parametrage = () => {
   const [showSelectLotsModal, setShowSelectLotsModal] = useState(false);
   const [selectedLots, setSelectedLots] = useState<string[]>([]);
   const [mappingConsigneId, setMappingConsigneId] = useState<number | null>(null);
-
+  const [lotNomAExtraire, setLotNomAExtraire] = useState<string>("");
   const [showMergeModal, setShowMergeModal] = useState(false);
+
+const fetchLotNomAExtraire = async (nomDossier: string, codeDossier: string) => {
+    try {
+
+      const res = await api.get("parametrage/nom-lot", {
+        params: {
+          nom_dossier: nomDossier,
+          nom_code_dossier: codeDossier,
+        },
+      });
+
+      const lotName = res.data?.lot_name || "";
+      setLotNomAExtraire(lotName);
+
+      setConsignesGroupes((prev) =>
+        prev.map((item) => {
+          if (item.consigne_id === 4) {
+            return {
+              ...item,
+              parametres: {
+                ...item.parametres,
+                mapping: {
+                  ...(item.parametres?.mapping ?? { source: "", target: "" }),
+                  target: lotName,
+                },
+              },
+            };
+          }
+          return item;
+        })
+      );
+
+      return lotName;
+    } catch (error) {
+      console.error("Erreur récupération lot nom:", error);
+      return "";
+    }
+  };
 
   useEffect(() => {
 
@@ -218,6 +256,10 @@ const Parametrage = () => {
         if (Array.isArray(data) && data.length > 0) {
           setConsignesGroupes(data);
           setEditingId(codifId);
+          // Si la consigne 4 est présente, on récupère le lot à extraire depuis le serveur
+          if (data.some((cg: ConsigneGroupes) => cg.consigne_id === 4)) {
+            await fetchLotNomAExtraire(dossierInfo.nom_dossier, codeDossierInfo.code_dossier);
+          }
         } else {
           // Si la table parametre_consignes est vide pour ce codification_id, 
           // on vide l'affichage des consignes
@@ -254,7 +296,7 @@ const Parametrage = () => {
 
 
 
-  const handleAddConsigne = () => {
+  const handleAddConsigne = async () => {
     if (!selectedConsigneId) {
       alert("S├®lectionnez d'abord une consigne");
       return;
@@ -262,10 +304,22 @@ const Parametrage = () => {
 
     // V├®rifier si la consigne existe d├®j├á
     if (consignesGroupes.some((c) => c.consigne_id === selectedConsigneId)) {
-      alert("Cette consigne est d├®j├á ajout├®e");
+      alert("Cette consigne est déjà ajoutée");
       return;
     }
 
+      let lotName = "";
+    if (selectedConsigneId === 4) {
+      const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
+      const codeDossierInfo = codeDossiers.find((c) => c.id_code_dossier === selectedCodeDossier);
+
+      if (!dossierInfo || !codeDossierInfo) {
+        alert("Sélectionnez un dossier et un code dossier avant d'ajouter la consigne 4");
+        return;
+      }
+
+      lotName = await fetchLotNomAExtraire(dossierInfo.nom_dossier, codeDossierInfo.code_dossier);
+    }
     const newConsigneGroupes: ConsigneGroupes = {
       consigne_id: selectedConsigneId as number,
       groupes: [],
@@ -829,7 +883,7 @@ const Parametrage = () => {
                     {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR A EXTRAIRE NOM LOT (ID 2) --- */}
                     {cg.consigne_id === 4 && (
                       <div className="space-y-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <div className="grid grid-cols-2 gap-4">
+                        {/*<div className="grid grid-cols-2 gap-4">*/}
                           <div className="space-y-1">
                             <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Séparateur</label>
                             <input
@@ -864,7 +918,15 @@ const Parametrage = () => {
                               className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
                             />
                           </div>
-                        </div>
+                             <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                              Nom du lot à extraire
+                            </label>
+                            <div className="w-full rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-[#1f2a5a] px-3 py-1.5 text-sm text-gray-900 dark:text-white">
+                              { cg.parametres?.mapping?.target || "Non défini" }
+                            </div>
+                          </div>
+                       {/*</div>*/} 
                         {/* Utilisation de la liste des champs du groupe si elle existe */}
                         <div className="text-[10px] text-blue-600 dark:text-blue-400 italic">
                           Cible : <span className="font-mono font-bold">Extraction vers le groupe sélectionné</span>
