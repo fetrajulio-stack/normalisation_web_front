@@ -7,7 +7,7 @@ interface SelectLotsModalProps {
   onClose: () => void;
   nomDossier: string;
   nomCodeDossier: string;
-  onConfirm: (selectedLots: string[]) => void;
+  onConfirm: (selectedLots: string[], libelle: number) => void;
 }
 
 const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
@@ -21,6 +21,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
   const [selectedLots, setSelectedLots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [parLibelle, setParLibelle] = useState<boolean>(false);
 
   // Charger la liste des lots au moment de l'ouverture du modal
   useEffect(() => {
@@ -74,7 +75,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
       setError("Veuillez s├®lectionner au moins un lot");
       return;
     }
-    onConfirm(selectedLots);
+    onConfirm(selectedLots, parLibelle ? 1 : 0);
     handleClose();
   };
 
@@ -179,20 +180,35 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
 
         {/* Footer */}
         {!loading && lots.length > 0 && (
-          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#1a233e] sticky bottom-0 flex justify-end gap-3">
-            <button
-              onClick={handleClose}
-              className="px-6 py-2.5 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-700 transition"
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={selectedLots.length === 0}
-              className="px-6 py-2.5 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              Lancer la normalisation
-            </button>
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#1a233e] sticky bottom-0 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <input
+                id="parLibelle"
+                type="checkbox"
+                checked={parLibelle}
+                onChange={() => setParLibelle((p) => !p)}
+                className="w-5 h-5 rounded cursor-pointer accent-[#FC8404]"
+              />
+              <label htmlFor="parLibelle" className="text-gray-700 dark:text-gray-200 font-medium">
+                Par libellé
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleClose}
+                className="px-6 py-2.5 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-700 transition"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={selectedLots.length === 0}
+                className="px-6 py-2.5 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                Lancer la normalisation
+              </button>
+            </div>
           </div>
         )}
       </div>
