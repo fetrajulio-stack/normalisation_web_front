@@ -367,14 +367,14 @@ const fetchLotNomAExtraire = async (nomDossier: string, codeDossier: string) => 
     );
   };
 
-  const handleRemoveGroupe = (consigneId: number, ordre: number) => {
+  const handleRemoveGroupe = (consigneId: number, groupeIndex: number) => {
     setConsignesGroupes((prev) =>
       prev.map((c) => {
         if (c.consigne_id === consigneId) {
           return {
             ...c,
             groupes: c.groupes
-              .filter((g) => g.ordre !== ordre)
+              .filter((_, idx) => idx !== groupeIndex)
               .map((g, idx) => ({ ...g, ordre: idx + 1 })),
           };
         }
@@ -1103,21 +1103,21 @@ const fetchLotNomAExtraire = async (nomDossier: string, codeDossier: string) => 
                             Groupes ({cg.groupes.length})
                           </h5>
                           <div className="space-y-2">
-                            {cg.groupes.map((groupe) => (
+                            {cg.groupes.map((groupe, index) => (
                               <div
-                                key={groupe.ordre}
+                                key={`${cg.consigne_id}-${index}`}
                                 className="flex justify-between items-start p-2 bg-white dark:bg-[#0f173a] rounded border border-gray-200 dark:border-gray-600"
                               >
                                 <div className="flex-1">
                                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                    Ordre: {groupe.ordre}
+                                    Ordre: {groupe.ordre ?? index + 1}
                                   </p>
                                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                     Champs ({groupe.champs.length}): {groupe.champs.join(", ")}
                                   </p>
                                 </div>
                                 <button
-                                  onClick={() => handleRemoveGroupe(cg.consigne_id, groupe.ordre)}
+                                  onClick={() => handleRemoveGroupe(cg.consigne_id, index)}
                                   className="ml-2 px-2 py-1 rounded bg-red-100 text-red-600 text-xs hover:bg-red-200"
                                 >
                                   ✕
