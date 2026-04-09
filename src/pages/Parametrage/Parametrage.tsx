@@ -514,7 +514,7 @@ const fetchLotNomAExtraire = async (nomDossier: string, codeDossier: string) => 
   };
 
   // Nouvelle fonction pour traiter la s├®lection des lots
-  const handleLotsSelected = async (lotsToProcess: string[]) => {
+  const handleLotsSelected = async (lotsToProcess: string[], libelle: number) => {
     setSelectedLots(lotsToProcess);
 
     const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
@@ -531,6 +531,7 @@ const fetchLotNomAExtraire = async (nomDossier: string, codeDossier: string) => 
       nom_dossier: dossierInfo.nom_dossier,
       nom_code_dossier: codeDossierInfo.code_dossier,
       selected_lots: lotsToProcess, // Ajouter la liste des lots s├®lectionn├®s
+      libelle: libelle,
     };
 
     setLoadingProcess(true);
