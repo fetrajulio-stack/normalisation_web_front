@@ -407,12 +407,20 @@ const fetchLotNomAExtraire = async (nomDossier: string, codeDossier: string) => 
       return;
     }
 
+    const cleanedConsignes = consignesGroupes.map(cg => {
+      const { mapping, ...restParametres } = cg.parametres || {};
+      return {
+        ...cg,
+        parametres: restParametres
+      };
+    });
+
     const payload: PayloadConsignes = {
       nom_dossier: dossierInfo.nom_dossier,
       nom_code_dossier: codeDossierInfo.code_dossier,
       codification_id: codificationId ?? undefined,
       //id_codification: codificationId ?? undefined,
-      consignes: consignesGroupes,
+      consignes: cleanedConsignes,
     };
 
     try {
