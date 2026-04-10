@@ -201,6 +201,13 @@ const Datamap = ({ champs, codificationId, isEtudes, disabled = false }: Datamap
         datamap: datamapToSend,
       });
 
+      // Recharger le datamap depuis le serveur pour refléter les valeurs sauvegardées
+      try {
+        await loadDatamap();
+      } catch (err) {
+        console.warn("Impossible de recharger le datamap après import:", err);
+      }
+
       alert(`Datamap importé et sauvegardé avec succès depuis "${file.name}"`);
       setDraggedFile(null);
 

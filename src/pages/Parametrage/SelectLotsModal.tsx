@@ -120,7 +120,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
             </div>
           ) : lots.length === 0 ? (
             <div className="p-4 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300">
-              ÔÜá´©Å Aucun lot trouv├® pour ce code dossier
+              Aucun lot trouvé pour ce code dossier
             </div>
           ) : (
             <>
@@ -137,7 +137,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
                   htmlFor="selectAll"
                   className="flex-1 cursor-pointer font-semibold text-gray-800 dark:text-gray-100"
                 >
-                  S├®lectionner tous ({lots.length} lots)
+                  Sélectionner tous ({lots.length} lots)
                 </label>
               </div>
 
@@ -171,7 +171,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
               {/* Info */}
               <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Ôä╣´©Å Info :</strong> Vous avez s├®lectionn├® {selectedLots.length} lot(s)
+                  <strong>Info :</strong> Vous avez sélectionné {selectedLots.length} lot(s)
                 </p>
               </div>
             </>
