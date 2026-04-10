@@ -6,7 +6,7 @@ import SelectLotsModal from "./SelectLotsModal";
 import { Download, Upload, CheckCircle } from "lucide-react";
 import api from "../../services/api";
 import useAuth from "../../context/AuthContext";
-import { AJOUT_SEPARATEUR, CONCATENER_CHAMPS, EXTRAIRE_NOM_LOT, FILL_EMPTY_DYN, PROFIL_CQ, PROFIL_ETUDES, SI_AUTRE_CHAMP_RENSEIGNE } from "../../constants/Constant";
+import { AJOUT_SEPARATEUR, CONCATENER_CHAMPS, EXTRAIRE_NOM_IMAGE, EXTRAIRE_NOM_LOT, FILL_EMPTY_DYN, PROFIL_CQ, PROFIL_ETUDES, SI_AUTRE_CHAMP_RENSEIGNE } from "../../constants/Constant";
 import axios from "axios";
 import MergeExcelModal from "./MergeExcelModal";
 
@@ -956,7 +956,7 @@ const Parametrage = () => {
                         </div>
                       </div>
                     )}
-                    {/* --- FIN DU NOUVEAU CHAMP --- */}
+                  {/* --- FIN DU NOUVEAU CHAMP --- */}
 
 
                     {/* --- NOUVEAU : CONFIGURATION DYNAMIQUE FUSION CHAMP AUTRE (ID 7) --- */}
@@ -1106,7 +1106,64 @@ const Parametrage = () => {
                         />
                       </div>
                     )}
-                    {/* --- FIN DU NOUVEAU CHAMP --- */}
+
+                    {/* --- CONFIGURATION EXTRACTION DEPUIS N_IMA (ID 10) --- */}
+                    {cg.consigne_code === EXTRAIRE_NOM_IMAGE && (
+                      <div className="space-y-4 p-3 bg-orange-50 dark:bg-[#2a3570]/40 rounded-lg border border-orange-200 dark:border-orange-800">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-[10px] font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">
+                            Extraction depuis le nom d'image (n_ima)
+                          </label>
+                          <span className="text-[9px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded font-mono">Source: n_ima</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Séparateur */}
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase">Séparateur</label>
+                            <input
+                              type="text"
+                              placeholder="Ex: _"
+                              value={cg.parametres?.separateur || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item => 
+                                  item.consigne_id === cg.consigne_id 
+                                    ? { ...item, parametres: { ...item.parametres, separateur: val }} 
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+
+                          {/* Position */}
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase">Position (Index)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={cg.parametres?.position || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setConsignesGroupes(prev => prev.map(item => 
+                                  item.consigne_id === cg.consigne_id 
+                                    ? { ...item, parametres: { ...item.parametres, position: val }} 
+                                    : item
+                                ));
+                              }}
+                              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="text-[10px] text-orange-600 dark:text-orange-400 italic">
+                          La valeur extraite sera injectée dans le champ coché du groupe (ex: num_page).
+                        </div>
+                      </div>
+                    )}
+
+                  {/* --- FIN --- */}
 
                     {/* Groupes */}
                     <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
