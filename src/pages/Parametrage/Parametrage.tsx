@@ -233,6 +233,8 @@ const Parametrage = () => {
       });
       setChamps(res.data);
 
+      await fetchLotNomAExtraire(dossierInfo.nom_dossier, codeDossierInfo.code_dossier);
+
       // r├®cup├®rer id de codification ├á partir du nom et code dossier
       let codifId: number | null = null;
       try {
@@ -269,9 +271,9 @@ const Parametrage = () => {
           setConsignesGroupes(data);
           setEditingId(codifId);
           // Si la consigne 4 est présente, on récupère le lot à extraire depuis le serveur
-          if (data.some((cg: ConsigneGroupes) => cg.consigne_code === EXTRAIRE_NOM_LOT)) {
+          /* if (data.some((cg: ConsigneGroupes) => cg.consigne_code === EXTRAIRE_NOM_LOT)) {
             await fetchLotNomAExtraire(dossierInfo.nom_dossier, codeDossierInfo.code_dossier);
-          }
+          } */
         } else {
           // Si la table parametre_consignes est vide pour ce codification_id, 
           // on vide l'affichage des consignes
@@ -319,19 +321,20 @@ const Parametrage = () => {
       alert("Cette consigne est déjà ajoutée");
       return;
     }
-
-    let lotName = "";
-    if (selectedConsigneId === 4) {
-      const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
-      const codeDossierInfo = codeDossiers.find((c) => c.id_code_dossier === selectedCodeDossier);
-
-      if (!dossierInfo || !codeDossierInfo) {
-        alert("Sélectionnez un dossier et un code dossier avant d'ajouter la consigne 4");
-        return;
-      }
-
-      lotName = await fetchLotNomAExtraire(dossierInfo.nom_dossier, codeDossierInfo.code_dossier);
-    }
+    /*
+        let lotName = "";
+        if (selectedConsigne?.code === EXTRAIRE_NOM_LOT) {
+          const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
+          const codeDossierInfo = codeDossiers.find((c) => c.id_code_dossier === selectedCodeDossier);
+    
+          if (!dossierInfo || !codeDossierInfo) {
+            alert("Sélectionnez un dossier et un code dossier avant d'ajouter la consigne 4");
+            return;
+          }
+    
+          lotName = await fetchLotNomAExtraire(dossierInfo.nom_dossier, codeDossierInfo.code_dossier);
+        }
+    */
 
     const newConsigneGroupes: ConsigneGroupes = {
       consigne_id: selectedConsigne?.id as number,
@@ -696,6 +699,7 @@ const Parametrage = () => {
   const loadingCodes = false;
 
 
+  console.log();
 
 
   return (
@@ -853,6 +857,7 @@ const Parametrage = () => {
             <div className="space-y-6">
               {consignesGroupes.map((cg) => {
                 const consigneInfo = consignes.find((c) => c.id === cg.consigne_id);
+
                 return (
                   <div
                     key={cg.consigne_id}
@@ -878,7 +883,7 @@ const Parametrage = () => {
                     </div>
 
                     {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR PAR DÉFAUT --- */}
-                    {(cg.consigne_code === FILL_EMPTY_DYN || (cg.parametres?.valeur_defaut && cg.parametres.valeur_defaut.trim() !== "")) && (
+                    {(consigneInfo?.code === FILL_EMPTY_DYN || (cg.parametres?.valeur_defaut && cg.parametres.valeur_defaut.trim() !== "")) && (
                       <div className="p-3 bg-orange-50 dark:bg-[#2a3570] rounded-lg border border-orange-200 dark:border-blue-800">
                         <label className="block mb-1 text-xs font-bold text-orange-700 dark:text-orange-300 uppercase">
                           Valeur à appliquer (ex: 9, NR, 7)
@@ -904,7 +909,7 @@ const Parametrage = () => {
                     {/* --- FIN DU NOUVEAU CHAMP --- */}
 
                     {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR A EXTRAIRE NOM LOT (ID 2) --- */}
-                    {cg.consigne_code === EXTRAIRE_NOM_LOT && (
+                    {consigneInfo?.code === EXTRAIRE_NOM_LOT && (
                       <div className="space-y-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
                         {/*<div className="grid grid-cols-2 gap-4">*/}
                         <div className="space-y-1">
@@ -946,7 +951,7 @@ const Parametrage = () => {
                             Nom du lot à extraire
                           </label>
                           <div className="w-full rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-[#1f2a5a] px-3 py-1.5 text-sm text-gray-900 dark:text-white">
-                            {cg.parametres?.mapping?.target || "Non défini"}
+                            {lotNomAExtraire || "Non défini"}
                           </div>
                         </div>
                         {/*</div>*/}
@@ -956,11 +961,11 @@ const Parametrage = () => {
                         </div>
                       </div>
                     )}
-                  {/* --- FIN DU NOUVEAU CHAMP --- */}
+                    {/* --- FIN DU NOUVEAU CHAMP --- */}
 
 
                     {/* --- NOUVEAU : CONFIGURATION DYNAMIQUE FUSION CHAMP AUTRE (ID 7) --- */}
-                    {cg.consigne_code === SI_AUTRE_CHAMP_RENSEIGNE && (
+                    {consigneInfo?.code === SI_AUTRE_CHAMP_RENSEIGNE && (
                       <div className="p-4 bg-slate-900 border border-orange-500 rounded-lg space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -1041,7 +1046,7 @@ const Parametrage = () => {
 
                     {/* --- Mettre dans un seule champ */}
 
-                    {cg.consigne_code === CONCATENER_CHAMPS && (
+                    {consigneInfo?.code === CONCATENER_CHAMPS && (
                       <div className="space-y-4 p-4 bg-slate-900 border border-green-500 rounded-lg">
                         <div className="space-y-1">
                           <label className="block text-[10px] font-bold text-green-400 uppercase tracking-wider">
@@ -1085,7 +1090,7 @@ const Parametrage = () => {
 
 
                     {/* --- NOUVEAU : CHAMP DE SAISIE POUR AJOUTER UN SÉPARATEUR (ID 2) --- */}
-                    {cg.consigne_code === AJOUT_SEPARATEUR && (
+                    {consigneInfo?.code === AJOUT_SEPARATEUR && (
                       <div className="p-3 bg-green-50 dark:bg-[#2a3570]/50 rounded-lg border border-green-200 dark:border-green-800">
                         <label className="block mb-1 text-xs font-bold text-green-700 dark:text-green-300 uppercase">
                           Séparateur
@@ -1108,7 +1113,7 @@ const Parametrage = () => {
                     )}
 
                     {/* --- CONFIGURATION EXTRACTION DEPUIS N_IMA (ID 10) --- */}
-                    {cg.consigne_code === EXTRAIRE_NOM_IMAGE && (
+                    {consigneInfo?.code === EXTRAIRE_NOM_IMAGE && (
                       <div className="space-y-4 p-3 bg-orange-50 dark:bg-[#2a3570]/40 rounded-lg border border-orange-200 dark:border-orange-800">
                         <div className="flex items-center justify-between">
                           <label className="block text-[10px] font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">
@@ -1127,9 +1132,9 @@ const Parametrage = () => {
                               value={cg.parametres?.separateur || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                setConsignesGroupes(prev => prev.map(item => 
-                                  item.consigne_id === cg.consigne_id 
-                                    ? { ...item, parametres: { ...item.parametres, separateur: val }} 
+                                setConsignesGroupes(prev => prev.map(item =>
+                                  item.consigne_id === cg.consigne_id
+                                    ? { ...item, parametres: { ...item.parametres, separateur: val } }
                                     : item
                                 ));
                               }}
@@ -1146,9 +1151,9 @@ const Parametrage = () => {
                               value={cg.parametres?.position || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                setConsignesGroupes(prev => prev.map(item => 
-                                  item.consigne_id === cg.consigne_id 
-                                    ? { ...item, parametres: { ...item.parametres, position: val }} 
+                                setConsignesGroupes(prev => prev.map(item =>
+                                  item.consigne_id === cg.consigne_id
+                                    ? { ...item, parametres: { ...item.parametres, position: val } }
                                     : item
                                 ));
                               }}
@@ -1163,7 +1168,7 @@ const Parametrage = () => {
                       </div>
                     )}
 
-                  {/* --- FIN --- */}
+                    {/* --- FIN --- */}
 
                     {/* Groupes */}
                     <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
