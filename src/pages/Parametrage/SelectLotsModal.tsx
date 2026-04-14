@@ -190,9 +190,10 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
                 className="w-5 h-5 rounded cursor-pointer accent-[#FC8404]"
               />
               <label htmlFor="parLibelle" className="text-gray-700 dark:text-gray-200 font-medium">
-                Par libellé
+                Par libellé  
               </label>
             </div>
+
 
             <div className="flex items-center gap-3">
               <button
