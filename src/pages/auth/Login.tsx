@@ -12,15 +12,18 @@ export default function Login() {
   const [password, setPassword] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage("");
 
-    const success = await login(email, password);
+    const { success, message } = await login(email.trim(), password);
     setLoading(false);
 
     if (success) {
+      setErrorMessage("");
       toast.success("Connexion réussie");
       const redirectPath = sessionStorage.getItem("redirectAfterLogin") || "/parametrage";
 
@@ -28,7 +31,9 @@ export default function Login() {
 
       navigate(redirectPath);
     } else {
-      toast.error("Email ou mot de passe incorrect");
+      const errorText = message || "Email ou mot de passe incorrect";
+      setErrorMessage(errorText);
+      toast.error(errorText);
     }
   };
 
@@ -83,6 +88,12 @@ export default function Login() {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+
+          {errorMessage && (
+            <p className="text-sm text-red-600 dark:text-red-400 mt-2">
+              {errorMessage}
+            </p>
+          )}
 
           {/* Submit button */}
           <button
