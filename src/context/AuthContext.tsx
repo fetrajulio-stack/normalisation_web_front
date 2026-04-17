@@ -2,9 +2,14 @@ import { createContext, useContext, useState } from "react";
 import api from "../services/api"; // adapte le chemin si besoin
 import type { User } from "../types/User";
 
+interface LoginResult {
+  success: boolean;
+  message?: string;
+}
+
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
 }
 
@@ -16,7 +21,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return stored ? JSON.parse(stored) : null;
   });
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<LoginResult> => {
     try {
       const response = await api.post("/login", {
         email,
@@ -25,16 +33,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { token, user } = response.data;
 
+      if (!token || !user) {
+        console.error("Login failed: missing token or user in response", response.data);
+        return {
+          success: false,
+          message: "Réponse inattendue du serveur",
+        };
+      }
+
       // 🔐 stocker séparément le token
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
       setUser(user);
 
-      return true;
-    } catch (error) {
-      console.error("Erreur login:", error);
-      return false;
+      return { success: true };
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { message?: string }, status?: number } };
+      const message =
+        apiError.response?.data?.message ||
+        "Email ou mot de passe incorrect";
+
+      return { success: false, message };
     }
   };
 
