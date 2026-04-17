@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Loader, Check } from "lucide-react";
+import { X, Loader, Check, Upload } from "lucide-react"; // Ajout de Upload
 import api from "../../services/api";
 
 interface SelectLotsModalProps {
@@ -7,7 +7,7 @@ interface SelectLotsModalProps {
   onClose: () => void;
   nomDossier: string;
   nomCodeDossier: string;
-  onConfirm: (selectedLots: string[], libelle: number) => void;
+  onConfirm: (selectedLots: string[], libelle: number, mappingFile: any) => void;
 }
 
 const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
@@ -22,8 +22,9 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parLibelle, setParLibelle] = useState<boolean>(false);
+  const [mappingFile, setMappingFile] = useState<any>(null);
 
-  // Charger la liste des lots au moment de l'ouverture du modal
+  // Charger la liste des lots
   useEffect(() => {
     if (isOpen && nomDossier && nomCodeDossier) {
       fetchLots();
@@ -33,7 +34,6 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
   const fetchLots = async () => {
     setLoading(true);
     setError(null);
-
     try {
       const response = await api.get("/lots", {
         params: {
@@ -41,18 +41,40 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
           nom_code_dossier: nomCodeDossier,
         },
       });
-
       const lotsList = response.data?.lots || [];
       setLots(lotsList);
-      // S├®lectionner tous les lots par d├®faut
       setSelectedLots(lotsList);
     } catch (err: any) {
-      const errorMsg =
-        err?.response?.data?.message || err?.message || "Erreur lors du chargement des lots";
+      const errorMsg = err?.response?.data?.message || err?.message || "Erreur lors du chargement des lots";
       setError(errorMsg);
-      console.error("Erreur:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImportMapping = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('mapping_file', file);
+    formData.append('nom_dossier', nomDossier); // Optionnel : lier au dossier actuel
+
+    try {
+      // Utilisation de ton instance "api" plutôt que axios brut
+      const response = await api.post('/import-mapping-client', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      const { success, debug_mapping } = response.data;
+
+      if (success) {
+        setMappingFile(debug_mapping);
+        alert("Mapping client importé avec succès !");
+      }
+    } catch (error: any) {
+      console.error("Erreur import mapping:", error);
+      alert("Erreur lors de l'importation du fichier.");
     }
   };
 
@@ -72,10 +94,10 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
 
   const handleConfirm = () => {
     if (selectedLots.length === 0) {
-      setError("Veuillez s├®lectionner au moins un lot");
+      setError("Veuillez sélectionner au moins un lot");
       return;
     }
-    onConfirm(selectedLots, parLibelle ? 1 : 0);
+    onConfirm(selectedLots, parLibelle ? 1 : 0, mappingFile);
     handleClose();
   };
 
@@ -95,36 +117,26 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             Sélectionner les lots
           </h2>
-          <button
-            onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition"
-          >
+          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition">
             <X size={24} />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Messages */}
           {error && (
             <div className="p-4 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300">
               {error}
             </div>
           )}
 
-          {/* Loading */}
           {loading ? (
             <div className="flex items-center justify-center gap-3 py-8">
               <Loader size={24} className="animate-spin text-[#FC8404]" />
               <p className="text-gray-600 dark:text-gray-300">Chargement des lots...</p>
             </div>
-          ) : lots.length === 0 ? (
-            <div className="p-4 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300">
-              Aucun lot trouvé pour ce code dossier
-            </div>
           ) : (
             <>
-              {/* Select All Checkbox */}
               <div className="flex items-center gap-3 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600">
                 <input
                   type="checkbox"
@@ -133,21 +145,14 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
                   onChange={toggleAllLots}
                   className="w-5 h-5 rounded cursor-pointer accent-[#FC8404]"
                 />
-                <label
-                  htmlFor="selectAll"
-                  className="flex-1 cursor-pointer font-semibold text-gray-800 dark:text-gray-100"
-                >
+                <label htmlFor="selectAll" className="flex-1 cursor-pointer font-semibold text-gray-800 dark:text-gray-100">
                   Sélectionner tous ({lots.length} lots)
                 </label>
               </div>
 
-              {/* Lots List */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {lots.map((lot) => (
-                  <div
-                    key={lot}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition border border-gray-200 dark:border-gray-700"
-                  >
+                  <div key={lot} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition border border-gray-200 dark:border-gray-700">
                     <input
                       type="checkbox"
                       id={`lot-${lot}`}
@@ -155,24 +160,12 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
                       onChange={() => toggleLot(lot)}
                       className="w-5 h-5 rounded cursor-pointer accent-[#FC8404]"
                     />
-                    <label
-                      htmlFor={`lot-${lot}`}
-                      className="flex-1 cursor-pointer text-gray-700 dark:text-gray-200 font-medium"
-                    >
+                    <label htmlFor={`lot-${lot}`} className="flex-1 cursor-pointer text-gray-700 dark:text-gray-200 font-medium">
                       {lot}
                     </label>
-                    {selectedLots.includes(lot) && (
-                      <Check size={20} className="text-green-500" />
-                    )}
+                    {selectedLots.includes(lot) && <Check size={20} className="text-green-500" />}
                   </div>
                 ))}
-              </div>
-
-              {/* Info */}
-              <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Info :</strong> Vous avez sélectionné {selectedLots.length} lot(s)
-                </p>
               </div>
             </>
           )}
@@ -180,34 +173,45 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
 
         {/* Footer */}
         {!loading && lots.length > 0 && (
-          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#1a233e] sticky bottom-0 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <input
-                id="parLibelle"
-                type="checkbox"
-                checked={parLibelle}
-                onChange={() => setParLibelle((p) => !p)}
-                className="w-5 h-5 rounded cursor-pointer accent-[#FC8404]"
-              />
-              <label htmlFor="parLibelle" className="text-gray-700 dark:text-gray-200 font-medium">
-                Par libellé  
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#1a233e] sticky bottom-0 flex flex-wrap items-center justify-between gap-4">
+
+            {/* Options à gauche */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <input
+                  id="parLibelle"
+                  type="checkbox"
+                  checked={parLibelle}
+                  onChange={() => setParLibelle((p) => !p)}
+                  className="w-5 h-5 rounded cursor-pointer accent-[#FC8404]"
+                />
+                <label htmlFor="parLibelle" className="text-gray-700 dark:text-gray-200 font-medium whitespace-nowrap">
+                  Par libellé
+                </label>
+              </div>
+
+              {/* Import Mapping */}
+              <label className="flex items-center gap-2 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-xs transition-colors shadow-sm">
+                <Upload size={14} />
+                <span>Mapping Client</span>
+                <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportMapping} />
               </label>
             </div>
 
-
+            {/* Actions à droite */}
             <div className="flex items-center gap-3">
               <button
                 onClick={handleClose}
-                className="px-6 py-2.5 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-700 transition"
+                className="px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-400 transition"
               >
                 Annuler
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={selectedLots.length === 0}
-                className="px-6 py-2.5 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-2 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition disabled:opacity-50 flex items-center gap-2"
               >
-                Lancer la normalisation
+                Lancer
               </button>
             </div>
           </div>

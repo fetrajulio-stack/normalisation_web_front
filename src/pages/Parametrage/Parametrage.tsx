@@ -539,7 +539,7 @@ const Parametrage = () => {
   };
 
   // Nouvelle fonction pour traiter la s├®lection des lots
-  const handleLotsSelected = async (lotsToProcess: string[], libelle: number) => {
+  const handleLotsSelected = async (lotsToProcess: string[], libelle: number, mappingFile: any) => {
     setSelectedLots(lotsToProcess);
 
     const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
@@ -599,7 +599,7 @@ const Parametrage = () => {
             } else {
               setLoadingMessage("⏳ Normalisation et génération TXT...");
             }
-            axios.post(`${baseURL}normalisation/${codificationId}`, {}, {
+            axios.post(`${baseURL}normalisation/normalise`, { codification_id: codificationId, mapping_file: mappingFile }, {
               headers: {
                 Authorization: `Bearer ${token}`
               }
