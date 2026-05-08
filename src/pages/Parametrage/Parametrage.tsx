@@ -109,6 +109,8 @@ const Parametrage = () => {
 
   // ├ëtat pour les consignes avec groupes
   const [consignesGroupes, setConsignesGroupes] = useState<ConsigneGroupes[]>([]);
+  const [savedConsignesCache, setSavedConsignesCache] = useState<Record<number, ConsigneGroupes[]>>({});
+  const [isDirty, setIsDirty] = useState(false);
   const [selectedConsigneId, setSelectedConsigneId] = useState<number | "">("");
   const [selectedGroupChamps, setSelectedGroupChamps] = useState<string[]>([]);
   const [newGroupParams, setNewGroupParams] = useState<Record<number, { separateur?: string; position?: string }>>({});
@@ -171,6 +173,98 @@ const Parametrage = () => {
       console.error("Erreur récupération lot nom:", error);
       return "";
     }
+  };
+
+  // Normalize consignes returned by backend:
+  // - If `parametres` is a JSON string, try to parse it.
+  // - If `parametres` is an array of {champ, position, separateur}, map those
+  //   back into each groupe as groupe.parametres so the UI can display them.
+  const normalizeConsignes = (data: any[]): ConsigneGroupes[] => {
+    if (!Array.isArray(data)) return [];
+
+    return data.map((cg: any) => {
+      const copy: any = { ...cg };
+
+      try {
+        let params: any = copy.parametres;
+
+        if (typeof params === "string") {
+          // backend may store JSON as string
+          try {
+            params = JSON.parse(params);
+          } catch (e) {
+            // not JSON, leave as-is
+          }
+        }
+
+        // If params is an array of per-champ objects, propagate to groupes
+        if (Array.isArray(params)) {
+          // ensure groupes exists
+          copy.groupes = (copy.groupes || []).map((g: any) => {
+            const champCandidates: string[] = Array.isArray(g.champs) && g.champs.length > 0 ? g.champs.map(String) : [];
+
+            const found = params.find((p: any) => {
+              if (!p) return false;
+              // match if p.champ equals any candidate (loose string compare)
+              try {
+                return champCandidates.some((c) => String(p.champ) === String(c));
+              } catch (e) {
+                return false;
+              }
+            });
+
+            if (found) {
+              return {
+                ...g,
+                parametres: {
+                  separateur: found.separateur ?? "",
+                  position: found.position ?? "",
+                },
+              };
+            }
+            return g;
+          });
+
+          // keep parametres as parsed array for future use
+          copy.parametres = params;
+        } else if (params && typeof params === 'object' && !Array.isArray(params)) {
+          // params is an object keyed by champ, e.g.
+          // { repertoire: { position: '2', separateur: '_' }, annee: { ... } }
+          // Propagate those per-champ entries into each groupe.parametres for display.
+          try {
+            const paramKeys = Object.keys(params || {});
+            if (paramKeys.length > 0) {
+              copy.groupes = (copy.groupes || []).map((g: any) => {
+                const champCandidates: string[] = Array.isArray(g.champs) && g.champs.length > 0 ? g.champs.map(String) : [];
+                const matchKey = paramKeys.find((k) => champCandidates.some((c) => String(k) === String(c)));
+                if (matchKey) {
+                  const found = params[matchKey];
+                  return {
+                    ...g,
+                    parametres: {
+                      separateur: (found && (found.separateur ?? found.sep)) ?? "",
+                      position: (found && (found.position ?? found.pos)) ?? "",
+                    },
+                  };
+                }
+                return g;
+              });
+            }
+          } catch (e) {
+            // silent fallback
+          }
+
+          // keep original shape
+          copy.parametres = params;
+        } else {
+          copy.parametres = params;
+        }
+      } catch (e) {
+        console.error("normalizeConsignes error:", e);
+      }
+
+      return copy as ConsigneGroupes;
+    });
   };
 
   useEffect(() => {
@@ -266,14 +360,61 @@ const Parametrage = () => {
       console.debug("codificationId fetched", codifId);
       setCodificationId(codifId);
 
+      // If user has unsaved changes, auto-save before loading parametrage
+      if (isDirty) {
+        try {
+          await handleSaveChamps();
+        } catch (e) {
+          console.error('Auto-save before validate failed:', e);
+        }
+      }
+
       // V├®rifier s'il existe d├®j├á un parametrage pour cette codification
       try {
         const resp = await api.get(`/consigne/parametrage/${codifId}`);
         const data = resp.data;
+        console.debug('DEBUG: GET /consigne/parametrage response', { codifId, data });
 
         // On vérifie si data est un tableau et s'il n'est PAS vide
         if (Array.isArray(data) && data.length > 0) {
-          setConsignesGroupes(data);
+          // Normalize server data first
+          const serverNormalized = normalizeConsignes(data);
+
+          // Merge server response with local state to preserve groupe.parametres
+          const merged = serverNormalized.map((srv: ConsigneGroupes) => {
+            const local = consignesGroupes.find(l => l.consigne_id === srv.consigne_id);
+            if (!local) return srv;
+
+            // If server returned empty parametres but local has them, prefer local
+            const srvParamsEmpty = (srv.parametres == null)
+              || (Array.isArray(srv.parametres) && (srv.parametres as any[]).length === 0)
+              || (typeof srv.parametres === 'object' && !Array.isArray(srv.parametres) && Object.keys(srv.parametres || {}).length === 0);
+
+            if (srvParamsEmpty && local.parametres && Object.keys(local.parametres as any).length > 0) {
+              try {
+                srv = { ...srv, parametres: local.parametres } as ConsigneGroupes;
+              } catch (e) {
+                // ignore
+              }
+            }
+
+            const mergedGroupes = (srv.groupes || []).map((g) => {
+              const champ = Array.isArray(g.champs) && g.champs.length > 0 ? g.champs[0] : "";
+              // try match by champ in local groupes
+              const localFound = (local.groupes || []).find((lg) => Array.isArray(lg.champs) && lg.champs[0] === champ);
+
+              // if server groupe has no parametres but local has, use local
+              const hasSrvParams = g.parametres && Object.keys((g as any).parametres || {}).length > 0;
+              if (!hasSrvParams && localFound && localFound.parametres) {
+                return { ...g, parametres: localFound.parametres };
+              }
+              return g;
+            });
+
+            return { ...srv, groupes: mergedGroupes } as ConsigneGroupes;
+          });
+
+          setConsignesGroupes(merged);
           setEditingId(codifId);
           // Si la consigne 4 est présente, on récupère le lot à extraire depuis le serveur
           /* if (data.some((cg: ConsigneGroupes) => cg.consigne_code === EXTRAIRE_NOM_LOT)) {
@@ -351,6 +492,7 @@ const Parametrage = () => {
     };
 
     setConsignesGroupes([...consignesGroupes, newConsigneGroupes]);
+    setIsDirty(true);
     setSelectedConsigneId("");
     setSelectedGroupChamps([]);
   };
@@ -385,6 +527,7 @@ const Parametrage = () => {
         return c;
       })
     );
+    setIsDirty(true);
 
     // clear selection and temp params for this consigne
     setSelectedGroupChamps([]);
@@ -399,6 +542,7 @@ const Parametrage = () => {
     setConsignesGroupes((prev) =>
       prev.filter((c) => c.consigne_id !== consigneId)
     );
+    setIsDirty(true);
   };
 
   const handleRemoveGroupe = (consigneId: number, groupeIndex: number) => {
@@ -415,6 +559,7 @@ const Parametrage = () => {
         return c;
       })
     );
+    setIsDirty(true);
   };
 
   const handleSaveChamps = async () => {
@@ -494,6 +639,23 @@ const Parametrage = () => {
         const response = await api.post("/consigne/parametrage/add", payload);
         console.log("R├®ponse du serveur (add):", response.data);
       }
+      // mark clean on successful save
+      setIsDirty(false);
+      // cache the cleaned consignes per codification for later validate calls
+      try {
+        if (codificationId) {
+          setSavedConsignesCache((prev) => ({ ...prev, [codificationId as number]: cleanedConsignes as ConsigneGroupes[] }));
+        }
+      } catch (e) {
+        // ignore
+      }
+      // Update local UI immediately with the cleaned payload so separators/positions
+      // are visible even if the server response does not yet include them.
+      try {
+        setConsignesGroupes(cleanedConsignes as ConsigneGroupes[]);
+      } catch (e) {
+        console.error('Erreur mise à jour UI locale après save:', e);
+      }
       alert(editingId ? "Modifié avec succés !" : "Enregistré avec succés !");
       // Après un enregistrement, recharger le parametrage depuis le backend
       // pour refléter toute normalisation ou transformation côté serveur.
@@ -501,8 +663,62 @@ const Parametrage = () => {
         if (codificationId) {
           const resp = await api.get(`/consigne/parametrage/${codificationId}`);
           const data = resp.data;
+          console.debug('DEBUG: refresh GET /consigne/parametrage response after save', { codificationId, data });
           if (Array.isArray(data)) {
-            setConsignesGroupes(data as ConsigneGroupes[]);
+            let serverNormalized = normalizeConsignes(data);
+
+            // If we have a cached saved consignes for this codification, and server returned empty parametres,
+            // re-inject cached parametres to avoid losing user-entered separateur/position.
+            const cached = codificationId ? savedConsignesCache[codificationId] : undefined;
+            if (cached && Array.isArray(cached) && cached.length > 0) {
+              serverNormalized = serverNormalized.map((srv: ConsigneGroupes) => {
+                const localSaved = cached.find(s => s.consigne_id === srv.consigne_id);
+                if (!localSaved) return srv;
+
+                const srvParamsEmpty = (srv.parametres == null)
+                  || (Array.isArray(srv.parametres) && (srv.parametres as any[]).length === 0)
+                  || (typeof srv.parametres === 'object' && !Array.isArray(srv.parametres) && Object.keys(srv.parametres || {}).length === 0);
+
+                if (srvParamsEmpty && localSaved.parametres) {
+                  srv = { ...srv, parametres: localSaved.parametres } as ConsigneGroupes;
+                }
+
+                // also ensure groupes parametres are filled
+                const mergedGroupes = (srv.groupes || []).map((g) => {
+                  const champ = Array.isArray(g.champs) && g.champs.length > 0 ? g.champs[0] : "";
+                  const localGroup = (localSaved.groupes || []).find(lg => Array.isArray(lg.champs) && lg.champs[0] === champ);
+                  if ((!g.parametres || Object.keys((g as any).parametres || {}).length === 0) && localGroup && localGroup.parametres) {
+                    return { ...g, parametres: localGroup.parametres };
+                  }
+                  return g;
+                });
+
+                return { ...srv, groupes: mergedGroupes } as ConsigneGroupes;
+              });
+            }
+
+            // Merge server response with local state to preserve groupe.parametres
+            const merged = serverNormalized.map((srv: ConsigneGroupes) => {
+              const local = consignesGroupes.find(l => l.consigne_id === srv.consigne_id);
+              if (!local) return srv;
+
+              const mergedGroupes = (srv.groupes || []).map((g) => {
+                const champ = Array.isArray(g.champs) && g.champs.length > 0 ? g.champs[0] : "";
+                // try match by champ in local groupes
+                const localFound = (local.groupes || []).find((lg) => Array.isArray(lg.champs) && lg.champs[0] === champ);
+
+                // if server groupe has no parametres but local has, use local
+                const hasSrvParams = g.parametres && Object.keys((g as any).parametres || {}).length > 0;
+                if (!hasSrvParams && localFound && localFound.parametres) {
+                  return { ...g, parametres: localFound.parametres };
+                }
+                return g;
+              });
+
+              return { ...srv, groupes: mergedGroupes } as ConsigneGroupes;
+            });
+
+            setConsignesGroupes(merged);
             setEditingId(codificationId);
           }
         }
@@ -527,6 +743,15 @@ const Parametrage = () => {
     if (!codificationId || !selectedDossier || !selectedCodeDossier) {
       alert("Veuillez valider un dossier avant de lancer.");
       return;
+    }
+
+    // If there are unsaved changes, auto-save before launching export
+    if (isDirty) {
+      try {
+        await handleSaveChamps();
+      } catch (e) {
+        console.error('Auto-save before lancer failed:', e);
+      }
     }
 
     if (!dossierInfo || !codeDossierInfo) {
@@ -946,6 +1171,7 @@ const Parametrage = () => {
                           value={cg.parametres?.valeur_defaut || ""}
                           onChange={(e) => {
                             const val = e.target.value;
+                            setIsDirty(true);
                             setConsignesGroupes((prev) =>
                               prev.map((item) =>
                                 item.consigne_id === cg.consigne_id
@@ -993,6 +1219,7 @@ const Parametrage = () => {
                               value={cg.parametres?.champ_principal || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
+                                setIsDirty(true);
                                 setConsignesGroupes(prev => prev.map(item =>
                                   item.consigne_id === cg.consigne_id
                                     ? { ...item, parametres: { ...item.parametres, champ_principal: val } }
@@ -1013,6 +1240,7 @@ const Parametrage = () => {
                               value={cg.parametres?.valeur_declencheuse ?? ""}
                               onChange={(e) => {
                                 const val = e.target.value;
+                                setIsDirty(true);
                                 setConsignesGroupes(prev => prev.map(item =>
                                   item.consigne_id === cg.consigne_id
                                     ? {
@@ -1039,6 +1267,7 @@ const Parametrage = () => {
                               value={cg.parametres?.champ_autre || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
+                                setIsDirty(true);
                                 setConsignesGroupes(prev => prev.map(item =>
                                   item.consigne_id === cg.consigne_id
                                     ? { ...item, parametres: { ...item.parametres, champ_autre: val } }
@@ -1073,6 +1302,7 @@ const Parametrage = () => {
                             value={cg.parametres?.separateur || ""}
                             onChange={(e) => {
                               const val = e.target.value;
+                              setIsDirty(true);
                               setConsignesGroupes(prev => prev.map(item =>
                                 item.consigne_id === cg.consigne_id
                                   ? { ...item, parametres: { ...item.parametres, separateur: val } }
@@ -1116,6 +1346,7 @@ const Parametrage = () => {
                           value={cg.parametres?.separateur || ""}
                           onChange={(e) => {
                             const val = e.target.value;
+                            setIsDirty(true);
                             setConsignesGroupes(prev => prev.map(item =>
                               item.consigne_id === cg.consigne_id
                                 ? { ...item, parametres: { ...item.parametres, separateur: val } }
@@ -1147,6 +1378,7 @@ const Parametrage = () => {
                               value={cg.parametres?.separateur || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
+                                setIsDirty(true);
                                 setConsignesGroupes(prev => prev.map(item =>
                                   item.consigne_id === cg.consigne_id
                                     ? { ...item, parametres: { ...item.parametres, separateur: val } }
@@ -1166,6 +1398,7 @@ const Parametrage = () => {
                               value={cg.parametres?.position || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
+                                setIsDirty(true);
                                 setConsignesGroupes(prev => prev.map(item =>
                                   item.consigne_id === cg.consigne_id
                                     ? { ...item, parametres: { ...item.parametres, position: val } }
@@ -1286,7 +1519,7 @@ const Parametrage = () => {
                                 type="text"
                                 value={newGroupParams[cg.consigne_id]?.separateur || ""}
                                 onChange={(e) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: { ...(prev[cg.consigne_id] || {}), separateur: e.target.value } }))}
-                                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm outline-none"
+                                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm text-white outline-none"
                               />
                             </div>
                             <div>
@@ -1296,7 +1529,7 @@ const Parametrage = () => {
                                 min="0"
                                 value={newGroupParams[cg.consigne_id]?.position || ""}
                                 onChange={(e) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: { ...(prev[cg.consigne_id] || {}), position: e.target.value } }))}
-                                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm outline-none"
+                                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm text-white outline-none"
                               />
                             </div>
                           </div>
