@@ -37,6 +37,10 @@ interface Consigne {
 interface Groupe {
   ordre: number;
   champs: string[];
+  parametres?: {
+    separateur?: string;
+    position?: string | number;
+  };
 }
 
 interface ConsigneGroupes {
@@ -45,8 +49,8 @@ interface ConsigneGroupes {
   groupes: Groupe[];
   parametres: {
     valeur_defaut?: string;
-    separateur?: string;
-    position?: string | number;
+    separateur?: string | string[];
+    position?: string | number | string[];
     champ_principal?: string;
     champ_autre?: string;
     valeur_declencheuse?: string;
@@ -107,6 +111,7 @@ const Parametrage = () => {
   const [consignesGroupes, setConsignesGroupes] = useState<ConsigneGroupes[]>([]);
   const [selectedConsigneId, setSelectedConsigneId] = useState<number | "">("");
   const [selectedGroupChamps, setSelectedGroupChamps] = useState<string[]>([]);
+  const [newGroupParams, setNewGroupParams] = useState<Record<number, { separateur?: string; position?: string }>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   // identifiant de la codification r├®cup├®r├® via nom/code dossier
   const [codificationId, setCodificationId] = useState<number | null>(null);
@@ -356,6 +361,8 @@ const Parametrage = () => {
       return;
     }
 
+    const params = newGroupParams[consigneId] ?? {};
+
     setConsignesGroupes((prev) =>
       prev.map((c) => {
         if (c.consigne_id === consigneId) {
@@ -367,6 +374,10 @@ const Parametrage = () => {
               {
                 ordre: nextOrdre,
                 champs: selectedGroupChamps,
+                parametres: {
+                  ...(params.separateur ? { separateur: params.separateur } : {}),
+                  ...(params.position ? { position: params.position } : {}),
+                },
               },
             ],
           };
@@ -375,7 +386,13 @@ const Parametrage = () => {
       })
     );
 
+    // clear selection and temp params for this consigne
     setSelectedGroupChamps([]);
+    setNewGroupParams((prev) => {
+      const copy = { ...prev };
+      delete copy[consigneId];
+      return copy;
+    });
   };
 
   const handleRemoveConsigne = (consigneId: number) => {
@@ -426,9 +443,33 @@ const Parametrage = () => {
 
     const cleanedConsignes = consignesGroupes.map(cg => {
       const { mapping, ...restParametres } = cg.parametres || {};
+
+      // For EXTRAIRE_NOM_LOT we need to send parametres as an array of objects
+      // [{ champ, position, separateur }, ...]
+      if (cg.consigne_code === EXTRAIRE_NOM_LOT) {
+        const paramsArray = cg.groupes
+          .map((g) => {
+            const champ = Array.isArray(g.champs) && g.champs.length > 0 ? g.champs[0] : "";
+            const position = g.parametres?.position ?? "";
+            const separateur = g.parametres?.separateur ?? "";
+            return {
+              champ,
+              position: String(position),
+              separateur: separateur,
+            };
+          })
+          .filter(p => p.champ !== "");
+
+        return {
+          ...cg,
+          parametres: paramsArray
+        };
+      }
+
+      const newParam: any = { ...restParametres };
       return {
         ...cg,
-        parametres: restParametres
+        parametres: newParam
       };
     });
 
@@ -454,9 +495,20 @@ const Parametrage = () => {
         console.log("R├®ponse du serveur (add):", response.data);
       }
       alert(editingId ? "Modifié avec succés !" : "Enregistré avec succés !");
-      setConsignesGroupes([]);
-      setEditingId(null);
-      setCodificationId(null);
+      // Après un enregistrement, recharger le parametrage depuis le backend
+      // pour refléter toute normalisation ou transformation côté serveur.
+      try {
+        if (codificationId) {
+          const resp = await api.get(`/consigne/parametrage/${codificationId}`);
+          const data = resp.data;
+          if (Array.isArray(data)) {
+            setConsignesGroupes(data as ConsigneGroupes[]);
+            setEditingId(codificationId);
+          }
+        }
+      } catch (refreshErr) {
+        console.error('Erreur rafraîchissement parametrage après enregistrement:', refreshErr);
+      }
     } catch (err: any) {
       console.error("Erreur d├®taill├®e:", err);
       const errorMessage = err?.response?.data?.message || err?.message || "Erreur inconnue";
@@ -910,42 +962,7 @@ const Parametrage = () => {
 
                     {/* --- NOUVEAU : CHAMP DE SAISIE POUR LA VALEUR A EXTRAIRE NOM LOT (ID 2) --- */}
                     {consigneInfo?.code === EXTRAIRE_NOM_LOT && (
-                      <div className="space-y-4 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
-                        {/*<div className="grid grid-cols-2 gap-4">*/}
-                        <div className="space-y-1">
-                          <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Séparateur</label>
-                          <input
-                            type="text"
-                            value={cg.parametres?.separateur || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setConsignesGroupes(prev => prev.map(item =>
-                                item.consigne_id === cg.consigne_id
-                                  ? { ...item, parametres: { ...item.parametres, separateur: val } }
-                                  : item
-                              ));
-                            }}
-                            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Position (Index)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={cg.parametres?.position || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setConsignesGroupes(prev => prev.map(item =>
-                                item.consigne_id === cg.consigne_id
-                                  ? { ...item, parametres: { ...item.parametres, position: val } }
-                                  : item
-                              ));
-                            }}
-                            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-3 py-1.5 text-sm text-white"
-                          />
-                        </div>
+                      <div className="space-y-2 p-3 bg-blue-50 dark:bg-[#2a3570]/50 rounded-lg border border-blue-200 dark:border-blue-800">
                         <div className="space-y-1">
                           <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
                             Nom du lot à extraire
@@ -954,8 +971,6 @@ const Parametrage = () => {
                             {lotNomAExtraire || "Non défini"}
                           </div>
                         </div>
-                        {/*</div>*/}
-                        {/* Utilisation de la liste des champs du groupe si elle existe */}
                         <div className="text-[10px] text-blue-600 dark:text-blue-400 italic">
                           Cible : <span className="font-mono font-bold">Extraction vers le groupe sélectionné</span>
                         </div>
@@ -1190,6 +1205,32 @@ const Parametrage = () => {
                                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                     Champs ({groupe.champs.length}): {groupe.champs.join(", ")}
                                   </p>
+                                  {(() => {
+                                    // Prefer group-level parametres, fallback to consigne-level array (EXTRAIRE_NOM_LOT)
+                                    const grp = groupe.parametres ?? undefined;
+                                    let displayParams: { separateur?: string; position?: string | number } | undefined = grp;
+
+                                    if (!displayParams && Array.isArray(cg.parametres)) {
+                                      const champ = Array.isArray(groupe.champs) && groupe.champs.length > 0 ? groupe.champs[0] : "";
+                                      const found = (cg.parametres as any[]).find((p: any) => p.champ === champ);
+                                      if (found) {
+                                        displayParams = { separateur: found.separateur, position: found.position };
+                                      }
+                                    }
+
+                                    if (!displayParams) return null;
+
+                                    return (
+                                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 italic space-y-0">
+                                        {displayParams.separateur !== undefined && (
+                                          <div>Séparateur : <span className="font-mono">{String(displayParams.separateur)}</span></div>
+                                        )}
+                                        {displayParams.position !== undefined && (
+                                          <div>Position : <span className="font-mono">{String(displayParams.position)}</span></div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 <button
                                   onClick={() => handleRemoveGroupe(cg.consigne_id, index)}
@@ -1237,6 +1278,29 @@ const Parametrage = () => {
                             </label>
                           ))}
                         </div>
+                        {consigneInfo?.code === EXTRAIRE_NOM_LOT && (
+                          <div className="grid grid-cols-2 gap-3 mt-2">
+                            <div>
+                              <label className="block text-[10px] font-medium text-gray-700 dark:text-gray-200">Séparateur (optionnel)</label>
+                              <input
+                                type="text"
+                                value={newGroupParams[cg.consigne_id]?.separateur || ""}
+                                onChange={(e) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: { ...(prev[cg.consigne_id] || {}), separateur: e.target.value } }))}
+                                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-medium text-gray-700 dark:text-gray-200">Position (index, optionnel)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={newGroupParams[cg.consigne_id]?.position || ""}
+                                onChange={(e) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: { ...(prev[cg.consigne_id] || {}), position: e.target.value } }))}
+                                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm outline-none"
+                              />
+                            </div>
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleAddGroupe(cg.consigne_id)}
