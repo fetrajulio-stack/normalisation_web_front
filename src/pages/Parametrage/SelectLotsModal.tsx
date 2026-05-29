@@ -1,13 +1,28 @@
 import { useState, useEffect } from "react";
 import { X, Loader, Check, Upload } from "lucide-react"; // Ajout de Upload
 import api from "../../services/api";
+import IndexationPanel from "./IndexationPanel";
 
 interface SelectLotsModalProps {
   isOpen: boolean;
   onClose: () => void;
   nomDossier: string;
   nomCodeDossier: string;
-  onConfirm: (selectedLots: string[], libelle: number, mappingFile: any) => void;
+  onConfirm: (selectedLots: string[], libelle: number, mappingFile: any, indexation: any) => void;
+}
+
+interface Champ {
+  idq: string;
+  defaut: string | null;
+}
+
+interface Groupe {
+  ordre: number;
+  champs: string[];
+  parametres?: {
+    separateur?: string;
+    position?: string | number;
+  };
 }
 
 const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
@@ -23,13 +38,38 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [parLibelle, setParLibelle] = useState<boolean>(false);
   const [mappingFile, setMappingFile] = useState<any>(null);
+  const [showIndexation, setShowIndexation] = useState(false);
+  const [champs, setChamps] = useState<Champ[]>([]);
+  const [loadingChamps, setLoadingChamps] = useState(false);
+  const [groupes, setGroupes] = useState<Groupe[]>([]);
+  const [selectedGroupChamps, setSelectedGroupChamps] = useState<string[]>([]);
+  const [newGroupParams, setNewGroupParams] = useState<{ separateur?: string; position?: string }>({});
 
   // Charger la liste des lots
   useEffect(() => {
     if (isOpen && nomDossier && nomCodeDossier) {
       fetchLots();
+      fetchChamps();
     }
   }, [isOpen, nomDossier, nomCodeDossier]);
+
+  const fetchChamps = async () => {
+    setLoadingChamps(true);
+    try {
+      const response = await api.get("/parametrage/list-champs", {
+        params: {
+          nom_dossier: nomDossier,
+          nom_code_dossier: nomCodeDossier,
+        },
+      });
+      const champsList = Array.isArray(response.data) ? response.data : response.data?.champs || [];
+      setChamps(champsList);
+    } catch (err: any) {
+      console.error("Erreur lors du chargement des champs:", err);
+    } finally {
+      setLoadingChamps(false);
+    }
+  };
 
   const fetchLots = async () => {
     setLoading(true);
@@ -97,14 +137,70 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
       setError("Veuillez sélectionner au moins un lot");
       return;
     }
-    onConfirm(selectedLots, parLibelle ? 1 : 0, mappingFile);
+    
+    // Préparer les données d'indexation
+    const indexationData = groupes.length === 0 ? "vide" : groupes;
+    
+    onConfirm(selectedLots, parLibelle ? 1 : 0, mappingFile, indexationData);
     handleClose();
   };
 
   const handleClose = () => {
     setSelectedLots([]);
     setError(null);
+    setShowIndexation(false);
+    setSelectedGroupChamps([]);
+    setNewGroupParams({});
+    setGroupes([]);
     onClose();
+  };
+
+  const toggleLotForIndexation = (lot: string) => {
+    setSelectedLots((prev) =>
+      prev.includes(lot) ? prev.filter((l) => l !== lot) : [...prev, lot]
+    );
+  };
+
+  const handleAddGroupe = () => {
+    if (selectedGroupChamps.length === 0) {
+      setError("Ajoutez au moins un champ au groupe");
+      return;
+    }
+
+    const nextOrdre = (groupes.length || 0) + 1;
+    setGroupes([
+      ...groupes,
+      {
+        ordre: nextOrdre,
+        champs: selectedGroupChamps,
+        parametres: {
+          ...(newGroupParams.separateur ? { separateur: newGroupParams.separateur } : {}),
+          ...(newGroupParams.position ? { position: newGroupParams.position } : {}),
+        },
+      },
+    ]);
+
+    // Réinitialiser la sélection
+    setSelectedGroupChamps([]);
+    setNewGroupParams({});
+  };
+
+  const handleRemoveGroupe = (index: number) => {
+    setGroupes(
+      groupes
+        .filter((_, idx) => idx !== index)
+        .map((g, idx) => ({ ...g, ordre: idx + 1 }))
+    );
+  };
+
+  const handleSaveIndexation = () => {
+    if (groupes.length === 0) {
+      setError("Ajoutez au moins un groupe");
+      return;
+    }
+    console.log("Indexation enregistrée:", groupes);
+    alert("Indexation enregistrée avec succès!");
+    setShowIndexation(false);
   };
 
   if (!isOpen) return null;
@@ -173,46 +269,74 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
 
         {/* Footer */}
         {!loading && lots.length > 0 && (
-          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#1a233e] sticky bottom-0 flex flex-wrap items-center justify-between gap-4">
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#1a233e] sticky bottom-0 space-y-4">
+            {/* Interface Indexation - Au dessus des boutons */}
+            {showIndexation && (
+              <IndexationPanel
+                champs={champs}
+                loadingChamps={loadingChamps}
+                groupes={groupes}
+                selectedGroupChamps={selectedGroupChamps}
+                newGroupParams={newGroupParams}
+                onAddGroupe={handleAddGroupe}
+                onRemoveGroupe={handleRemoveGroupe}
+                onSaveIndexation={handleSaveIndexation}
+                onClose={() => setShowIndexation(false)}
+                onSelectedGroupChampsChange={setSelectedGroupChamps}
+                onNewGroupParamsChange={setNewGroupParams}
+                error={error}
+              />
+            )}
 
-            {/* Options à gauche */}
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <input
-                  id="parLibelle"
-                  type="checkbox"
-                  checked={parLibelle}
-                  onChange={() => setParLibelle((p) => !p)}
-                  className="w-5 h-5 rounded cursor-pointer accent-[#FC8404]"
-                />
-                <label htmlFor="parLibelle" className="text-gray-700 dark:text-gray-200 font-medium whitespace-nowrap">
-                  Par libellé
+            {/* Boutons action */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Options à gauche */}
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="parLibelle"
+                    type="checkbox"
+                    checked={parLibelle}
+                    onChange={() => setParLibelle((p) => !p)}
+                    className="w-5 h-5 rounded cursor-pointer accent-[#FC8404]"
+                  />
+                  <label htmlFor="parLibelle" className="text-gray-700 dark:text-gray-200 font-medium whitespace-nowrap">
+                    Par libellé
+                  </label>
+                </div>
+
+                {/* Import Mapping */}
+                <label className="flex items-center gap-2 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-xs transition-colors shadow-sm">
+                  <Upload size={14} />
+                  <span>Mapping Client</span>
+                  <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportMapping} />
                 </label>
+
+                {/* Bouton Indexé */}
+                <button
+                  onClick={() => setShowIndexation((prev) => !prev)}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-xs transition-colors shadow-sm"
+                >
+                  Indexé
+                </button>
               </div>
 
-              {/* Import Mapping */}
-              <label className="flex items-center gap-2 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-xs transition-colors shadow-sm">
-                <Upload size={14} />
-                <span>Mapping Client</span>
-                <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportMapping} />
-              </label>
-            </div>
-
-            {/* Actions à droite */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-400 transition"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={selectedLots.length === 0}
-                className="px-6 py-2 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition disabled:opacity-50 flex items-center gap-2"
-              >
-                Lancer
-              </button>
+              {/* Actions à droite */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleClose}
+                  className="px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-400 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={selectedLots.length === 0}
+                  className="px-6 py-2 rounded-lg bg-[#FC8404] text-white font-semibold hover:bg-[#e67603] transition disabled:opacity-50 flex items-center gap-2"
+                >
+                  Lancer
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -816,7 +816,7 @@ const Parametrage = () => {
   };
 
   // Nouvelle fonction pour traiter la s├®lection des lots
-  const handleLotsSelected = async (lotsToProcess: string[], libelle: number, mappingFile: any) => {
+  const handleLotsSelected = async (lotsToProcess: string[], libelle: number, mappingFile: any, indexation: any) => {
     setSelectedLots(lotsToProcess);
 
     const dossierInfo = dossiers.find((d) => d.id_dossier === selectedDossier);
@@ -832,8 +832,9 @@ const Parametrage = () => {
     const payload = {
       nom_dossier: dossierInfo.nom_dossier,
       nom_code_dossier: codeDossierInfo.code_dossier,
-      selected_lots: lotsToProcess, // Ajouter la liste des lots s├®lectionn├®s
+      selected_lots: lotsToProcess, // Ajouter la liste des lots sélectionnés
       libelle: libelle,
+      indexation: indexation, // Ajouter le paramètre indexation
     };
 
     setLoadingProcess(true);
@@ -916,60 +917,6 @@ const Parametrage = () => {
   const filteredCodes = codeDossiers.filter((c) =>
     c.code_dossier.toLowerCase().includes(searchCodeDossier.toLowerCase())
   );
-
-  /* =========================
-     3´©ÅÔâú API normalisation
-  ========================= */
-  /*
- 
-  try {
- 
-    setLoadingMessage("ÔÅ│ Normalisation et g├®n├®ration Excel...");
- 
-    const response = await api.post(`/normalisation/${codificationId}`);
- 
-    const data = response.data;
-    */
-
-  /*
-  if (data.status === "OK" && data.url) {
-
-    const link = document.createElement("a");
-    link.href = data.url;
-    link.setAttribute("download", "");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    setLoadingMessage("Ô£à Fichier Excel g├®n├®r├® !");
-    alert("Ô£à Le fichier Excel a ├®t├® g├®n├®r├® et t├®l├®charg├® avec succ├¿s.");
-
-  } else {
-    alert("Erreur lors de la g├®n├®ration du fichier");
-  }
-    */
-  /*
-  if(data.status === "OK") {
-    await api.get(`/downloadexcel/${data.filename}`);
-    alert("Ô£à Le fichier Excel a ├®t├® g├®n├®r├® et t├®l├®charg├® avec succ├¿s.");
-  }
-  else {
-    alert("Erreur lors de la g├®n├®ration du fichier");
-  }
-    */
-  /* 
-
-} catch (error) {
-
-  console.error("Erreur normalisation", error);
-  alert("Erreur lors de la normalisation");
-
-} finally {
-
-  setLoadingProcess(false);
-
-}
-  */
 
   const isEtudes = user?.profil?.libelle === PROFIL_ETUDES;
   const isCQ = user?.profil?.libelle === PROFIL_CQ;
