@@ -24,7 +24,7 @@ interface Groupe {
     position?: string | number;
   };
 }
-
+const afficherBoutonIndexe = false;
 const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
   isOpen,
   onClose,
@@ -138,8 +138,9 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
       return;
     }
     
-    // Préparer les données d'indexation
-    const indexationData = groupes.length === 0 ? "vide" : groupes;
+    // L'envoi d'indexation est désactivé.
+    // On passe désormais `null` pour ne rien transmettre au backend.
+    const indexationData = null;
     
     onConfirm(selectedLots, parLibelle ? 1 : 0, mappingFile, indexationData);
     handleClose();
@@ -313,12 +314,14 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
                 </label>
 
                 {/* Bouton Indexé */}
-                <button
-                  onClick={() => setShowIndexation((prev) => !prev)}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-xs transition-colors shadow-sm"
-                >
-                  Indexé
-                </button>
+                {afficherBoutonIndexe && (
+                  <button
+                    onClick={() => setShowIndexation((prev) => !prev)}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-xs transition-colors shadow-sm"
+                  >
+                    Indexé
+                  </button>
+                )}
               </div>
 
               {/* Actions à droite */}

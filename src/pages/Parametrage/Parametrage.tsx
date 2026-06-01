@@ -9,6 +9,7 @@ import useAuth from "../../context/AuthContext";
 import { AJOUT_SEPARATEUR, CONCATENER_CHAMPS, EXTRAIRE_NOM_IMAGE, EXTRAIRE_NOM_LOT, FILL_EMPTY_DYN, PROFIL_CQ, PROFIL_ETUDES, SI_AUTRE_CHAMP_RENSEIGNE } from "../../constants/Constant";
 import axios from "axios";
 import MergeExcelModal from "./MergeExcelModal";
+import IndexationPanel from "./IndexationPanel";
 
 export interface Cathegory {
   id_code_dossier: number;
@@ -378,7 +379,39 @@ const Parametrage = () => {
         // On vérifie si data est un tableau et s'il n'est PAS vide
         if (Array.isArray(data) && data.length > 0) {
           // Normalize server data first
-          const serverNormalized = normalizeConsignes(data);
+          let serverNormalized = normalizeConsignes(data);
+
+          // If we have cached saved consignes for this codification, and server returned empty parametres,
+          // re-inject cached parametres to avoid losing user-entered separateur/position.
+          const cached = codifId ? savedConsignesCache[codifId] : undefined;
+          if (cached && Array.isArray(cached) && cached.length > 0) {
+            serverNormalized = serverNormalized.map((srv: ConsigneGroupes) => {
+              const localSaved = cached.find(s => s.consigne_id === srv.consigne_id);
+              if (!localSaved) return srv;
+
+              const srvParamsEmpty = (srv.parametres == null)
+                || (Array.isArray(srv.parametres) && (srv.parametres as any[]).length === 0)
+                || (typeof srv.parametres === 'object' && !Array.isArray(srv.parametres) && Object.keys(srv.parametres || {}).length === 0);
+
+              if (srvParamsEmpty && localSaved.parametres) {
+                srv = { ...srv, parametres: localSaved.parametres } as ConsigneGroupes;
+              }
+
+              const mergedGroupes = (srv.groupes || []).map((g) => {
+                const champ = Array.isArray(g.champs) && g.champs.length > 0 ? g.champs[0] : "";
+                const localGroup = (localSaved.groupes || []).find(lg => Array.isArray(lg.champs) && lg.champs[0] === champ);
+                const hasNoParams = !g.parametres
+                  || (typeof g.parametres === 'object' && Object.keys((g as any).parametres || {}).length === 0)
+                  || Object.values((g as any).parametres || {}).every((val: any) => val === "" || val == null);
+                if (hasNoParams && localGroup && localGroup.parametres) {
+                  return { ...g, parametres: localGroup.parametres };
+                }
+                return g;
+              });
+
+              return { ...srv, groupes: mergedGroupes } as ConsigneGroupes;
+            });
+          }
 
           // Merge server response with local state to preserve groupe.parametres
           const merged = serverNormalized.map((srv: ConsigneGroupes) => {
@@ -591,7 +624,7 @@ const Parametrage = () => {
 
       // For EXTRAIRE_NOM_LOT we need to send parametres as an array of objects
       // [{ champ, position, separateur }, ...]
-      if (cg.consigne_code === EXTRAIRE_NOM_LOT) {
+      if (cg.consigne_code === EXTRAIRE_NOM_LOT || cg.consigne_code === 'INDEXER_DOCUMENTS') {
         const paramsArray = cg.groupes
           .map((g) => {
             const champ = Array.isArray(g.champs) && g.champs.length > 0 ? g.champs[0] : "";
@@ -707,8 +740,8 @@ const Parametrage = () => {
                 // try match by champ in local groupes
                 const localFound = (local.groupes || []).find((lg) => Array.isArray(lg.champs) && lg.champs[0] === champ);
 
-                // if server groupe has no parametres but local has, use local
-                const hasSrvParams = g.parametres && Object.keys((g as any).parametres || {}).length > 0;
+                const hasSrvParams = g.parametres && Object.keys((g as any).parametres || {}).length > 0
+                  && !Object.values((g as any).parametres || {}).every((val: any) => val === "" || val == null);
                 if (!hasSrvParams && localFound && localFound.parametres) {
                   return { ...g, parametres: localFound.parametres };
                 }
@@ -780,25 +813,56 @@ const Parametrage = () => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       })
-        .then((res) => {
-          const filename = res.data.filename;
+        .then(async (res) => {
+          const filename = res?.data?.filename;
+          if (!filename) {
+            console.error('Réponse inattendue du serveur (downloadtxt) :', res);
+            alert('Erreur lors de la génération du fichier : nom de fichier manquant.');
+            return;
+          }
           const downloadUrl = `${baseURL}downloadtxt/${filename}`;
 
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.setAttribute('download', filename);
-          link.style.display = 'none';
+          const downloadBlob = async (fileUrl: string, saveName: string) => {
+            try {
+              const r = await fetch(fileUrl, { headers: { Authorization: `Bearer ${token}` } });
+              if (!r.ok) throw new Error('Network response was not ok');
+              const blob = await r.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = blobUrl;
+              link.download = saveName || '';
+              link.style.display = 'none';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(blobUrl);
+              return true;
+            } catch (e) {
+              console.error('Erreur téléchargement:', e);
+              return false;
+            }
+          };
 
-          document.body.appendChild(link);
-          link.click();
-
-          setTimeout(() => {
-            document.body.removeChild(link);
-          }, 100);
+          // Télécharger d'abord le fichier original
+          await downloadBlob(downloadUrl, filename);
 
           // --- ESSENTIEL : On arrête le chargement ici ---
           setLoadingProcess(false);
-          alert("✅ Transformation réussie !");
+
+          // Si le serveur a renvoyé un fichier indexé, télécharger le fichier indexé aussi
+          const indexedUrl = res?.data?.indexed_url;
+          const indexedFilename = res?.data?.indexed_filename;
+          if (indexedUrl) {
+            const ok = await downloadBlob(indexedUrl, indexedFilename || '');
+            if (ok) {
+              console.log('Transformation réussie (indexed):', res?.data);
+            } else {
+              console.log('Transformation réussie, mais échec du téléchargement indexé :', indexedUrl);
+            }
+            alert('Exportation réussite');
+          } else {
+            console.log('Transformation réussie:', res?.data);
+          }
         })
         .catch((error) => {
           console.error("Erreur:", error);
@@ -834,7 +898,8 @@ const Parametrage = () => {
       nom_code_dossier: codeDossierInfo.code_dossier,
       selected_lots: lotsToProcess, // Ajouter la liste des lots sélectionnés
       libelle: libelle,
-      indexation: indexation, // Ajouter le paramètre indexation
+      // Envoi d'indexation désactivé : le backend ne recevra plus ce champ.
+      // indexation: indexation,
     };
 
     setLoadingProcess(true);
@@ -882,17 +947,57 @@ const Parametrage = () => {
                 Authorization: `Bearer ${token}`
               }
             })
-              .then((res) => {
-                const filename = res.data.filename;
-                const url = exportFormat === "excel"
+              .then(async (res) => {
+                const filename = res?.data?.filename;
+                if (!filename) {
+                  console.error('Réponse inattendue du serveur (normalise) :', res);
+                  alert('Erreur lors de la génération du fichier : nom de fichier manquant.');
+                  return;
+                }
+                /*const url = exportFormat === "excel"
                   ? `${baseURL}downloadexcel/${filename}`
-                  : `${baseURL}downloadtxt/${filename}`;
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = filename;
-                link.click();
+                  : `${baseURL}downloadtxt/${filename}`;*/
 
-                alert("✅ Le fichier Excel a été généré et téléchargé avec succès.");
+                const url = exportFormat === "excel"
+  ? `${baseURL}normalisation/download/${filename}`
+  : `${baseURL}downloadtxt/${filename}`;
+
+
+
+                const downloadBlob = async (fileUrl: string, saveName: string) => {
+                  try {
+                    const r = await fetch(fileUrl, { headers: { Authorization: `Bearer ${token}` } });
+                    if (!r.ok) throw new Error('Network response was not ok');
+                    const blob = await r.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = saveName || '';
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(blobUrl);
+                    return true;
+                  } catch (e) {
+                    console.error('Erreur téléchargement:', e);
+                    return false;
+                  }
+                };
+
+                // Télécharger d'abord le fichier original
+                await downloadBlob(url, filename);
+
+                console.log('Fichier généré:', res?.data);
+
+                // Si un fichier indexé est présent, télécharger aussi le fichier indexé
+                const indexedUrl = res?.data?.indexed_url;
+                const indexedFilename = res?.data?.indexed_filename;
+                if (indexedUrl) {
+                  const ok = await downloadBlob(indexedUrl, indexedFilename || '');
+                  if (!ok) console.log('Fichier indexé disponible, ouvrez manuellement :', indexedUrl);
+                  alert('Exportation réussite');
+                }
               })
               .catch((error) => {
                 console.error("Erreur:", error);
@@ -1235,6 +1340,26 @@ const Parametrage = () => {
                       </div>
                     )}
 
+                    {/* --- Afficher panel d'indexation si la consigne INDEXER_DOCUMENTS est sélectionnée --- */}
+                    {consigneInfo?.code === 'INDEXER_DOCUMENTS' && (
+                      <div className="mt-3">
+                        <IndexationPanel
+                          champs={champs}
+                          loadingChamps={false}
+                          groupes={cg.groupes}
+                          selectedGroupChamps={selectedGroupChamps}
+                          newGroupParams={newGroupParams[cg.consigne_id] || {}}
+                          onAddGroupe={() => handleAddGroupe(cg.consigne_id)}
+                          onRemoveGroupe={(index: number) => handleRemoveGroupe(cg.consigne_id, index)}
+                          onSaveIndexation={() => { setIsDirty(true); alert('Indexation ajoutée (en local)'); }}
+                          onClose={() => {}}
+                          onSelectedGroupChampsChange={(arr: string[]) => setSelectedGroupChamps(arr)}
+                          onNewGroupParamsChange={(params: { separateur?: string; position?: string }) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: params }))}
+                          error={null}
+                        />
+                      </div>
+                    )}
+
                     {/* --- Mettre dans un seule champ */}
 
                     {consigneInfo?.code === CONCATENER_CHAMPS && (
@@ -1366,66 +1491,67 @@ const Parametrage = () => {
                     {/* --- FIN --- */}
 
                     {/* Groupes */}
-                    <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
-                      {cg.groupes.length > 0 && (
-                        <div>
-                          <h5 className="font-medium text-sm text-gray-900 dark:text-white mb-2">
-                            Groupes ({cg.groupes.length})
-                          </h5>
-                          <div className="space-y-2">
-                            {cg.groupes.map((groupe, index) => (
-                              <div
-                                key={`${cg.consigne_id}-${index}`}
-                                className="flex justify-between items-start p-2 bg-white dark:bg-[#0f173a] rounded border border-gray-200 dark:border-gray-600"
-                              >
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                    Ordre: {groupe.ordre ?? index + 1}
-                                  </p>
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                    Champs ({groupe.champs.length}): {groupe.champs.join(", ")}
-                                  </p>
-                                  {(() => {
-                                    // Prefer group-level parametres, fallback to consigne-level array (EXTRAIRE_NOM_LOT)
-                                    const grp = groupe.parametres ?? undefined;
-                                    let displayParams: { separateur?: string; position?: string | number } | undefined = grp;
-
-                                    if (!displayParams && Array.isArray(cg.parametres)) {
-                                      const champ = Array.isArray(groupe.champs) && groupe.champs.length > 0 ? groupe.champs[0] : "";
-                                      const found = (cg.parametres as any[]).find((p: any) => p.champ === champ);
-                                      if (found) {
-                                        displayParams = { separateur: found.separateur, position: found.position };
-                                      }
-                                    }
-
-                                    if (!displayParams) return null;
-
-                                    return (
-                                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 italic space-y-0">
-                                        {displayParams.separateur !== undefined && (
-                                          <div>Séparateur : <span className="font-mono">{String(displayParams.separateur)}</span></div>
-                                        )}
-                                        {displayParams.position !== undefined && (
-                                          <div>Position : <span className="font-mono">{String(displayParams.position)}</span></div>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                                <button
-                                  onClick={() => handleRemoveGroupe(cg.consigne_id, index)}
-                                  className="ml-2 px-2 py-1 rounded bg-red-100 text-red-600 text-xs hover:bg-red-200"
+                    {consigneInfo?.code !== 'INDEXER_DOCUMENTS' && (
+                      <div className="space-y-3 bg-gray-50 dark:bg-[#1f2a5a] p-3 rounded">
+                        {cg.groupes.length > 0 && (
+                          <div>
+                            <h5 className="font-medium text-sm text-gray-900 dark:text-white mb-2">
+                              Groupes ({cg.groupes.length})
+                            </h5>
+                            <div className="space-y-2">
+                              {cg.groupes.map((groupe, index) => (
+                                <div
+                                  key={`${cg.consigne_id}-${index}`}
+                                  className="flex justify-between items-start p-2 bg-white dark:bg-[#0f173a] rounded border border-gray-200 dark:border-gray-600"
                                 >
-                                  ✕
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                      Ordre: {groupe.ordre ?? index + 1}
+                                    </p>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                      Champs ({groupe.champs.length}): {groupe.champs.join(", ")}
+                                    </p>
+                                    {(() => {
+                                      const grp = groupe.parametres ?? undefined;
+                                      let displayParams: { separateur?: string; position?: string | number } | undefined = grp;
 
-                      {/* Ajouter groupe */}
-                      <div className="mt-3 p-3 bg-blue-50 dark:bg-[#374151] rounded space-y-2">
+                                      if (!displayParams && Array.isArray(cg.parametres)) {
+                                        const champ = Array.isArray(groupe.champs) && groupe.champs.length > 0 ? groupe.champs[0] : "";
+                                        const found = (cg.parametres as any[]).find((p: any) => p.champ === champ);
+                                        if (found) {
+                                          displayParams = { separateur: found.separateur, position: found.position };
+                                        }
+                                      }
+
+                                      if (!displayParams) return null;
+
+                                      return (
+                                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 italic space-y-0">
+                                          {displayParams.separateur !== undefined && (
+                                            <div>Séparateur : <span className="font-mono">{String(displayParams.separateur)}</span></div>
+                                          )}
+                                          {displayParams.position !== undefined && (
+                                            <div>Position : <span className="font-mono">{String(displayParams.position)}</span></div>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                  <button
+                                    onClick={() => handleRemoveGroupe(cg.consigne_id, index)}
+                                    className="ml-2 px-2 py-1 rounded bg-red-100 text-red-600 text-xs hover:bg-red-200"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Ajouter groupe */}
+                        {consigneInfo?.code !== 'INDEXER_DOCUMENTS' && (
+                          <div className="mt-3 p-3 bg-blue-50 dark:bg-[#374151] rounded space-y-2">
                         <label className="block text-sm font-medium text-gray-900 dark:text-white">
                           Sélectionner champs pour nouveau groupe
                         </label>
@@ -1490,7 +1616,9 @@ const Parametrage = () => {
                           + Ajouter groupe
                         </button>
                       </div>
+                      )}
                     </div>
+                    )}
                   </div>
                 );
               })}
