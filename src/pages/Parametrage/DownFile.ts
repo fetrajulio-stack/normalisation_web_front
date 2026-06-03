@@ -1,8 +1,17 @@
 export const downloadFilesSequentially = async (filenames: string[]): Promise<void> => {
     for (const filename of filenames) {
         try {
+
+            
             // 1. On attend que le fichier soit réellement téléchargé en mémoire (Blob)
-            const response = await fetch(`http://127.0.0.1:8000/api/normalisation/download/${filename}`);
+            //const response = await fetch(`http://127.0.0.1:8000/api/normalisation/download/${filename}`);
+            //const response = await fetch(`/api/normalisation/download/${filename}`);
+
+           const API_BASE_URL = import.meta.env.VITE_API_URL;
+            const response = await fetch(
+            `${API_BASE_URL}normalisation/download/${filename}`
+            );
+
             const blob = await response.blob();
            
             // 2. On crée une URL locale pour ce Blob
