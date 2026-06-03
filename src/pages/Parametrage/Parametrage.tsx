@@ -10,6 +10,7 @@ import { AJOUT_SEPARATEUR, CONCATENER_CHAMPS, EXTRAIRE_NOM_IMAGE, EXTRAIRE_NOM_L
 import axios from "axios";
 import MergeExcelModal from "./MergeExcelModal";
 import IndexationPanel from "./IndexationPanel";
+import { downloadFilesSequentially } from "./DownFile";
 
 export interface Cathegory {
   id_code_dossier: number;
@@ -954,19 +955,15 @@ const Parametrage = () => {
                   alert('Erreur lors de la génération du fichier : nom de fichier manquant.');
                   return;
                 }
-                /*const url = exportFormat === "excel"
-                  ? `${baseURL}downloadexcel/${filename}`
-                  : `${baseURL}downloadtxt/${filename}`;*/
-
                 const url = exportFormat === "excel"
-  ? `${baseURL}normalisation/download/${filename}`
-  : `${baseURL}downloadtxt/${filename}`;
-
+                  ? `${baseURL}normalisation/download/${filename}`
+                  : `${baseURL}downloadtxt/${filename}`;
 
 
                 const downloadBlob = async (fileUrl: string, saveName: string) => {
                   try {
                     const r = await fetch(fileUrl, { headers: { Authorization: `Bearer ${token}` } });
+                    console.log(r, fileUrl, saveName);
                     if (!r.ok) throw new Error('Network response was not ok');
                     const blob = await r.blob();
                     const blobUrl = URL.createObjectURL(blob);
@@ -985,18 +982,18 @@ const Parametrage = () => {
                   }
                 };
 
-                // Télécharger d'abord le fichier original
-                await downloadBlob(url, filename);
-
                 console.log('Fichier généré:', res?.data);
 
                 // Si un fichier indexé est présent, télécharger aussi le fichier indexé
-                const indexedUrl = res?.data?.indexed_url;
+                const indexedUrl = res?.data?.filename;
                 const indexedFilename = res?.data?.indexed_filename;
+                const zipFilename = res?.data?.zip_url;
+                const tabUrl = [indexedUrl, indexedFilename, zipFilename];
                 if (indexedUrl) {
-                  const ok = await downloadBlob(indexedUrl, indexedFilename || '');
-                  if (!ok) console.log('Fichier indexé disponible, ouvrez manuellement :', indexedUrl);
+                  await downloadFilesSequentially(tabUrl);
                   alert('Exportation réussite');
+                } else {
+                  await downloadBlob(url, filename);
                 }
               })
               .catch((error) => {
@@ -1352,7 +1349,7 @@ const Parametrage = () => {
                           onAddGroupe={() => handleAddGroupe(cg.consigne_id)}
                           onRemoveGroupe={(index: number) => handleRemoveGroupe(cg.consigne_id, index)}
                           onSaveIndexation={() => { setIsDirty(true); alert('Indexation ajoutée (en local)'); }}
-                          onClose={() => {}}
+                          onClose={() => { }}
                           onSelectedGroupChampsChange={(arr: string[]) => setSelectedGroupChamps(arr)}
                           onNewGroupParamsChange={(params: { separateur?: string; position?: string }) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: params }))}
                           error={null}
@@ -1552,72 +1549,72 @@ const Parametrage = () => {
                         {/* Ajouter groupe */}
                         {consigneInfo?.code !== 'INDEXER_DOCUMENTS' && (
                           <div className="mt-3 p-3 bg-blue-50 dark:bg-[#374151] rounded space-y-2">
-                        <label className="block text-sm font-medium text-gray-900 dark:text-white">
-                          Sélectionner champs pour nouveau groupe
-                        </label>
-                        <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-[#0f173a]">
-                          {champs.map((champ) => (
-                            <label
-                              key={champ.idq}
-                              className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedGroupChamps.includes(champ.idq)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedGroupChamps([
-                                      ...selectedGroupChamps,
-                                      champ.idq,
-                                    ]);
-                                  } else {
-                                    setSelectedGroupChamps(
-                                      selectedGroupChamps.filter(
-                                        (c) => c !== champ.idq
-                                      )
-                                    );
-                                  }
-                                }}
-                                className="w-4 h-4 cursor-pointer"
-                              />
-                              {champ.idq}
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                              Sélectionner champs pour nouveau groupe
                             </label>
-                          ))}
-                        </div>
-                        {consigneInfo?.code === EXTRAIRE_NOM_LOT && (
-                          <div className="grid grid-cols-2 gap-3 mt-2">
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 dark:text-gray-200">Séparateur (optionnel)</label>
-                              <input
-                                type="text"
-                                value={newGroupParams[cg.consigne_id]?.separateur || ""}
-                                onChange={(e) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: { ...(prev[cg.consigne_id] || {}), separateur: e.target.value } }))}
-                                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm text-white outline-none"
-                              />
+                            <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-[#0f173a]">
+                              {champs.map((champ) => (
+                                <label
+                                  key={champ.idq}
+                                  className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedGroupChamps.includes(champ.idq)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedGroupChamps([
+                                          ...selectedGroupChamps,
+                                          champ.idq,
+                                        ]);
+                                      } else {
+                                        setSelectedGroupChamps(
+                                          selectedGroupChamps.filter(
+                                            (c) => c !== champ.idq
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    className="w-4 h-4 cursor-pointer"
+                                  />
+                                  {champ.idq}
+                                </label>
+                              ))}
                             </div>
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 dark:text-gray-200">Position (index, optionnel)</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={newGroupParams[cg.consigne_id]?.position || ""}
-                                onChange={(e) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: { ...(prev[cg.consigne_id] || {}), position: e.target.value } }))}
-                                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm text-white outline-none"
-                              />
-                            </div>
+                            {consigneInfo?.code === EXTRAIRE_NOM_LOT && (
+                              <div className="grid grid-cols-2 gap-3 mt-2">
+                                <div>
+                                  <label className="block text-[10px] font-medium text-gray-700 dark:text-gray-200">Séparateur (optionnel)</label>
+                                  <input
+                                    type="text"
+                                    value={newGroupParams[cg.consigne_id]?.separateur || ""}
+                                    onChange={(e) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: { ...(prev[cg.consigne_id] || {}), separateur: e.target.value } }))}
+                                    className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm text-white outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-medium text-gray-700 dark:text-gray-200">Position (index, optionnel)</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={newGroupParams[cg.consigne_id]?.position || ""}
+                                    onChange={(e) => setNewGroupParams(prev => ({ ...prev, [cg.consigne_id]: { ...(prev[cg.consigne_id] || {}), position: e.target.value } }))}
+                                    className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f173a] px-2 py-1 text-sm text-white outline-none"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleAddGroupe(cg.consigne_id)}
+                              disabled={selectedGroupChamps.length === 0}
+                              className="w-full px-3 py-1.5 rounded bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
+                            >
+                              + Ajouter groupe
+                            </button>
                           </div>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => handleAddGroupe(cg.consigne_id)}
-                          disabled={selectedGroupChamps.length === 0}
-                          className="w-full px-3 py-1.5 rounded bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
-                        >
-                          + Ajouter groupe
-                        </button>
                       </div>
-                      )}
-                    </div>
                     )}
                   </div>
                 );

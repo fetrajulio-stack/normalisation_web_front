@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Loader, Check, Upload } from "lucide-react"; // Ajout de Upload
 import api from "../../services/api";
 import IndexationPanel from "./IndexationPanel";
+import IndexerPdf from "./IndexerPdf";
 
 interface SelectLotsModalProps {
   isOpen: boolean;
@@ -44,7 +45,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
   const [groupes, setGroupes] = useState<Groupe[]>([]);
   const [selectedGroupChamps, setSelectedGroupChamps] = useState<string[]>([]);
   const [newGroupParams, setNewGroupParams] = useState<{ separateur?: string; position?: string }>({});
-
+  const [showIndexerPdf, setShowIndexerPdf] = useState(false);
   // Charger la liste des lots
   useEffect(() => {
     if (isOpen && nomDossier && nomCodeDossier) {
@@ -204,6 +205,7 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
     setShowIndexation(false);
   };
 
+
   if (!isOpen) return null;
 
   return (
@@ -312,6 +314,29 @@ const SelectLotsModal: React.FC<SelectLotsModalProps> = ({
                   <span>Mapping Client</span>
                   <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportMapping} />
                 </label>
+
+                
+              <button
+                  onClick={() => {
+                  console.log("open pdf modal");
+                  setShowIndexerPdf(true);
+                }}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-xs transition-colors shadow-sm"
+                >
+                <Upload size={14} />
+                Fichier à indexer
+              </button>
+                              
+                {/* MODAL PDF */}
+                  {showIndexerPdf && (
+                    <IndexerPdf
+                      nomDossier={nomDossier}
+                      nomCodeDossier={nomCodeDossier}
+                      onClose={() => setShowIndexerPdf(false)}
+                    />
+                  )}
+
+
 
                 {/* Bouton Indexé */}
                 {afficherBoutonIndexe && (
