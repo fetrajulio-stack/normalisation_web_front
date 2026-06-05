@@ -57,8 +57,8 @@ const IndexerPdf: React.FC<Props> = ({ nomDossier, nomCodeDossier, onClose }) =>
     };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-[#0f173a] w-full max-w-lg rounded-xl shadow-xl">
+    <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-[#7e8ac3] w-full max-w-lg rounded-xl shadow-xl">
         
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b">
@@ -74,7 +74,7 @@ const IndexerPdf: React.FC<Props> = ({ nomDossier, nomCodeDossier, onClose }) =>
             <div className="text-sm text-blue-600">{message}</div>
           )}
 
-          <label className="flex items-center gap-2 cursor-pointer bg-gray-100 dark:bg-gray-800 p-3 rounded">
+          <label className="flex items-center gap-2 cursor-pointer bg-gray-100 p-3 rounded">
             <Upload size={16} />
             <span>Sélectionner PDF</span>
             <input

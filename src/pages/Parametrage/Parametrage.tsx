@@ -986,7 +986,7 @@ const Parametrage = () => {
 
                 // Si un fichier indexé est présent, télécharger aussi le fichier indexé
                 const indexedUrl = res?.data?.filename;
-                const indexedFilename = res?.data?.indexed_filename;
+                /*const indexedFilename = res?.data?.indexed_filename;
                 const zipFilename = res?.data?.zip_url;
                 const tabUrl = [indexedUrl, indexedFilename, zipFilename];
                 if (indexedUrl) {
@@ -994,6 +994,29 @@ const Parametrage = () => {
                   alert('Exportation réussite');
                 } else {
                   await downloadBlob(url, filename);
+                }*/
+                const indexedFilename = res?.data?.indexed_filename;
+                const zipFilename = res?.data?.zip_url;
+
+                // Cas indexation
+                if (indexedFilename || zipFilename) {
+
+                  const files = [
+                    filename,
+                    indexedFilename,
+                    zipFilename
+                  ].filter(Boolean);
+
+                  await downloadFilesSequentially(files);
+
+                  alert('Exportation réussite');
+                }
+                // Cas normal
+                else {
+
+                  await downloadBlob(url, filename);
+
+                  alert('Exportation réussite');
                 }
               })
               .catch((error) => {
